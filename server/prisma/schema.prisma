@@ -1,0 +1,67 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  username    String   // In-game username
+  islandName  String   // In-game island name
+  isSupplier  Boolean  @default(false)
+  password    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  tradesAsRequester Trade[] @relation("TradeRequester")
+  tradesAsSupplier  Trade[] @relation("TradeSupplier")
+  
+  @@map("users")
+}
+
+model Villager {
+  id          String @id @default(cuid())
+  name        String @unique
+  personality String
+  species     String
+  imageUrl    String?
+  popularity  Int    @default(0)
+  
+  trades Trade[]
+  
+  @@map("villagers")
+}
+
+model Trade {
+  id            String    @id @default(cuid())
+  requesterId   String
+  supplierId    String?
+  villagerId    String
+  status        TradeStatus @default(PENDING)
+  queuePosition Int?
+  plotReady     Boolean   @default(false)
+  scheduledTime DateTime?
+  dodoCode      String?
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  requester User   @relation("TradeRequester", fields: [requesterId], references: [id])
+  supplier  User?  @relation("TradeSupplier", fields: [supplierId], references: [id])
+  villager  Villager @relation(fields: [villagerId], references: [id])
+  
+  @@map("trades")
+}
+
+enum TradeStatus {
+  PENDING
+  ACCEPTED
+  QUEUED
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}

@@ -452,11 +452,12 @@ export default function VillagerGrid({
         {/* A-Z Navigation */}
       <div className="alphabet-nav-top" style={{
         display: 'flex',
-        justifyContent: 'center',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        gap: '4px',
-        padding: '10px 20px',
-        marginBottom: '20px'
+        gap: '0',
+        padding: '4px 0',
+        marginBottom: '12px',
+        width: '100%'
       }}>
         {/* Previous Arrow */}
         <button

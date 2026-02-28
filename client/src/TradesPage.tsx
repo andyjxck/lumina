@@ -161,6 +161,7 @@ export default function TradesPage({ onBack, onNavigate, currentPage }: TradesPa
         .select('*')
         .eq('status', 'open')
         .in('villager_name', ownedList)
+        .neq('requester_id', user.id)
         .order('created_at', { ascending: false }),
       supabase
         .from('trade_requests')

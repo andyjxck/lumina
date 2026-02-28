@@ -4119,9 +4119,9 @@ body::before {
 
 /* ===== TRADES PAGE (tr-* classes) ===== */
 .trades-page {
+  flex: 1;
   min-height: 100vh;
   padding: 72px 28px 60px 28px;
-  margin-left: 290px;
   background: linear-gradient(160deg, #0f1108 0%, #181a06 40%, #12140a 100%);
 }
 @media (max-width: 768px) {
@@ -7418,9 +7418,13 @@ body::before {
 
 /* ===== LAYOUT WRAPPERS — sidebars are fixed, main pages get right padding ===== */
 .profile-layout,
-.trades-layout,
 .feedback-layout {
   display: block;
+}
+.trades-layout {
+  display: flex;
+  align-items: flex-start;
+  min-height: 100vh;
 }
 @media (max-width: 768px) {
   .profile-layout,
@@ -7747,11 +7751,12 @@ body::before {
 
 /* ===== TRADES SIDEBAR — fixed left panel, matches shop sidebar style ===== */
 .tsb-sidebar {
-  position: fixed;
+  position: sticky;
   top: 16px;
-  left: 16px;
-  bottom: 16px;
+  left: unset;
+  flex-shrink: 0;
   width: 270px;
+  height: calc(100vh - 32px);
   z-index: 100;
   border-radius: 20px;
   display: flex;

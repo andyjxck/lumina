@@ -828,6 +828,16 @@ export default function TradesPage({ onBack, onNavigate, currentPage }: TradesPa
     <>
     <MobileNav currentPage={currentPage} onNavigate={onNavigate} extraFilters={tradesExtraFilters} />
     <div className="trades-layout">
+    <TradesSidebar
+      tab={tab}
+      incoming={incoming}
+      myRequests={myRequests}
+      ongoingTrades={ongoingTrades}
+      historyTrades={historyTrades}
+      onFilter={f => setFilteredList(f.length === currentRaw.length ? null : f)}
+      onNavigate={onNavigate}
+      currentPage={currentPage}
+    />
     <div className="trades-page">
       <button className="page-back-btn" onClick={onBack}>←</button>
 
@@ -856,17 +866,6 @@ export default function TradesPage({ onBack, onNavigate, currentPage }: TradesPa
       {renderContent(displayList)}
     </div>
     </div>
-
-    <TradesSidebar
-      tab={tab}
-      incoming={incoming}
-      myRequests={myRequests}
-      ongoingTrades={ongoingTrades}
-      historyTrades={historyTrades}
-      onFilter={f => setFilteredList(f.length === currentRaw.length ? null : f)}
-      onNavigate={onNavigate}
-      currentPage={currentPage}
-    />
 
     {/* Amiibo Verification Modal */}
     {showAmiiboModal && (

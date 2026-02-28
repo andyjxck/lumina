@@ -3933,6 +3933,7 @@ body::before {
 .trades-page {
   min-height: 100vh;
   padding: 72px 28px 60px 310px;
+  background: linear-gradient(160deg, #0f1108 0%, #181a06 40%, #12140a 100%);
 }
 
 .tr-header {
@@ -6897,7 +6898,6 @@ body::before {
 .trades-layout,
 .feedback-layout {
   display: block;
-  overflow-x: hidden;
 }
 
 /* Hide web sidebar on mobile for all pages */
@@ -8363,9 +8363,14 @@ body::before {
     padding: 0 !important;
   }
 
-  /* ── Profile + Trades sidebars: full-screen overlay, start CLOSED ── */
+  /* ── Profile + Trades sidebars: hidden on mobile, MobileNav replaces them ── */
   .psb-sidebar,
   .tsb-sidebar {
+    display: none !important;
+  }
+  .psb-sidebar.mobile-open,
+  .tsb-sidebar.mobile-open {
+    display: flex !important;
     position: fixed !important;
     top: 0 !important; left: 0 !important;
     right: 0 !important;
@@ -8373,16 +8378,10 @@ body::before {
     width: 100vw !important;
     border-radius: 0 !important;
     z-index: 600 !important;
-    transform: translateX(-100vw) !important;
-    transition: transform 0.25s ease;
     overflow-y: auto !important;
     padding: 24px 20px !important;
-    display: flex !important;
     flex-direction: column !important;
-  }
-  .psb-sidebar.mobile-open,
-  .tsb-sidebar.mobile-open {
-    transform: translateX(0) !important;
+    transform: none !important;
   }
 
   .psb-sidebar-inner,

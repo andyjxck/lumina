@@ -851,10 +851,11 @@ export default function TradesPage({ onBack, onNavigate, currentPage }: TradesPa
   const displayList = filteredList ?? currentRaw;
 
   return (
-    <div className="trades-layout">
+    <>
     <div className="mobile-nav-only">
       <MobileNav currentPage={currentPage} onNavigate={onNavigate} />
     </div>
+    <div className="trades-layout">
     <div className="trades-page">
       <button className="page-back-btn" onClick={onBack}>←</button>
 
@@ -881,6 +882,7 @@ export default function TradesPage({ onBack, onNavigate, currentPage }: TradesPa
       </div>
 
       {renderContent(displayList)}
+    </div>
     </div>
 
     <TradesSidebar
@@ -936,7 +938,7 @@ export default function TradesPage({ onBack, onNavigate, currentPage }: TradesPa
         </div>
       </div>
     )}
-    </div>
+    </>
   );
 }
 

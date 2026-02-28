@@ -4014,13 +4014,15 @@ body::before {
 
 @media (max-width: 600px) {
   .tr-tab {
-    font-size: 11px;
-    padding: 8px 4px;
-    gap: 4px;
-    border-radius: 10px;
+    font-size: 9px;
+    padding: 6px 2px;
+    gap: 2px;
+    border-radius: 8px;
+    flex: 1;
+    min-width: 0;
   }
   .tr-tab-dot { display: none; }
-  .tr-tab-count { padding: 1px 5px; font-size: 9px; }
+  .tr-tab-count { padding: 1px 4px; font-size: 8px; }
 }
 
 .tr-tab-count {
@@ -8298,11 +8300,11 @@ body::before {
     padding-bottom: 24px !important;
   }
 
-  /* Trade tabs: 2 columns × 2 rows */
+  /* Trade tabs: all 4 on one line */
   .tr-tabs {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 4px !important;
   }
 
   /* ── Shop sidebar: full-screen overlay, starts CLOSED ── */

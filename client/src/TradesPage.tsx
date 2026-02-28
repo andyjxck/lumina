@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth, supabase } from './AuthContext';
 import { VILLAGERS_DATA, SPECIES_ICONS, getDefaultVillagerData } from './villagerData.js';
 import TradesSidebar from './TradesSidebar';
+import MobileNav from './MobileNav';
 
 type Page = 'shop' | 'profile' | 'login' | 'orders' | 'admin' | 'feedback';
 
@@ -851,6 +852,9 @@ export default function TradesPage({ onBack, onNavigate, currentPage }: TradesPa
 
   return (
     <div className="trades-layout">
+    <div className="mobile-nav-only">
+      <MobileNav currentPage={currentPage} onNavigate={onNavigate} />
+    </div>
     <div className="trades-page">
       <button className="page-back-btn" onClick={onBack}>←</button>
 

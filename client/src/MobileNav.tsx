@@ -19,23 +19,23 @@ type Page = 'shop' | 'profile' | 'login' | 'orders' | 'admin' | 'feedback';
 interface MobileNavProps {
   currentPage: Page;
   onNavigate: (page: Page) => void;
-  selectedSpecies: string[];
-  setSelectedSpecies: (v: string[] | ((prev: string[]) => string[])) => void;
-  selectedPersonalities: string[];
-  setSelectedPersonalities: (v: string[] | ((prev: string[]) => string[])) => void;
-  selectedGenders: string[];
-  setSelectedGenders: (v: string[] | ((prev: string[]) => string[])) => void;
+  selectedSpecies?: string[];
+  setSelectedSpecies?: (v: string[] | ((prev: string[]) => string[])) => void;
+  selectedPersonalities?: string[];
+  setSelectedPersonalities?: (v: string[] | ((prev: string[]) => string[])) => void;
+  selectedGenders?: string[];
+  setSelectedGenders?: (v: string[] | ((prev: string[]) => string[])) => void;
 }
 
 export default function MobileNav({
   currentPage,
   onNavigate,
-  selectedSpecies,
-  setSelectedSpecies,
-  selectedPersonalities,
-  setSelectedPersonalities,
-  selectedGenders,
-  setSelectedGenders,
+  selectedSpecies = [],
+  setSelectedSpecies = () => {},
+  selectedPersonalities = [],
+  setSelectedPersonalities = () => {},
+  selectedGenders = [],
+  setSelectedGenders = () => {},
 }: MobileNavProps) {
   const { user } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);

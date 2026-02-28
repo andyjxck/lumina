@@ -450,95 +450,36 @@ export default function VillagerGrid({
         </div>
 
         {/* A-Z Navigation */}
-      <div className="alphabet-nav-top" style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        gap: '0',
-        padding: '4px 0',
-        marginBottom: '12px',
-        width: '100%'
-      }}>
-        {/* Previous Arrow */}
-        <button
-          onClick={goToPreviousLetter}
-          disabled={alphabet.indexOf(currentLetter) <= 0}
-          style={{
-            minWidth: '24px',
-            height: '24px',
-            border: 'none',
-            background: 'transparent',
-            color: alphabet.indexOf(currentLetter) <= 0 ? 'rgba(255,255,255,0.3)' : 'white',
-            borderRadius: '0',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            cursor: alphabet.indexOf(currentLetter) <= 0 ? 'not-allowed' : 'pointer',
-            transition: 'all 0.2s ease',
-            flexShrink: 0,
-            padding: '0',
-            margin: '0'
-          }}
-        >
-          ‹
-        </button>
-
-        {alphabet.map(letter => (
-          <button
-            key={letter}
-            className={`alphabet-btn-top ${
-              groupedVillagers[letter] ? 'active' : 'disabled'
-            } ${currentLetter === letter ? 'current' : ''}`}
-            onClick={() => {
-              if (groupedVillagers[letter]) {
-                setCurrentLetter(letter);
-              }
-            }}
-            style={{
-              minWidth: '0',
-              flex: '1',
-              height: '24px',
-              border: 'none',
-              borderBottom: currentLetter === letter ? '2px solid white' : '2px solid transparent',
-              background: 'transparent',
-              color: currentLetter === letter ? 'white' : 'rgba(255,255,255,0.45)',
-              borderRadius: '0',
-              fontSize: '11px',
-              fontWeight: currentLetter === letter ? '700' : '400',
-              cursor: groupedVillagers[letter] ? 'pointer' : 'default',
-              transition: 'all 0.2s ease',
-              flexShrink: 1,
-              padding: '0',
-              margin: '0',
-              opacity: groupedVillagers[letter] ? '1' : '0.25',
-              textAlign: 'center'
-            }}
-          >
-            {letter}
-          </button>
+      <div className="alphabet-nav-top" style={{ display: 'flex', flexDirection: 'column', gap: '2px', padding: '4px 0', marginBottom: '12px', width: '100%' }}>
+        {[alphabet.slice(0, 13), alphabet.slice(13)].map((row, rowIdx) => (
+          <div key={rowIdx} style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+            {row.map(letter => (
+              <button
+                key={letter}
+                className={`alphabet-btn-top ${groupedVillagers[letter] ? 'active' : 'disabled'} ${currentLetter === letter ? 'current' : ''}`}
+                onClick={() => { if (groupedVillagers[letter]) setCurrentLetter(letter); }}
+                style={{
+                  flex: '1',
+                  height: '22px',
+                  border: 'none',
+                  borderBottom: currentLetter === letter ? '2px solid white' : '2px solid transparent',
+                  background: 'transparent',
+                  color: currentLetter === letter ? 'white' : 'rgba(255,255,255,0.45)',
+                  borderRadius: '0',
+                  fontSize: '11px',
+                  fontWeight: currentLetter === letter ? '700' : '400',
+                  cursor: groupedVillagers[letter] ? 'pointer' : 'default',
+                  padding: '0',
+                  margin: '0',
+                  opacity: groupedVillagers[letter] ? '1' : '0.25',
+                  textAlign: 'center'
+                }}
+              >
+                {letter}
+              </button>
+            ))}
+          </div>
         ))}
-
-        {/* Next Arrow */}
-        <button
-          onClick={goToNextLetter}
-          disabled={alphabet.indexOf(currentLetter) >= alphabet.length - 1}
-          style={{
-            minWidth: '24px',
-            height: '24px',
-            border: 'none',
-            background: 'transparent',
-            color: alphabet.indexOf(currentLetter) >= alphabet.length - 1 ? 'rgba(255,255,255,0.3)' : 'white',
-            borderRadius: '0',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            cursor: alphabet.indexOf(currentLetter) >= alphabet.length - 1 ? 'not-allowed' : 'pointer',
-            transition: 'all 0.2s ease',
-            flexShrink: 0,
-            padding: '0',
-            margin: '0'
-          }}
-        >
-          ›
-        </button>
       </div>
 
         {/* Current letter section with swipe */}

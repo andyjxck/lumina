@@ -6,6 +6,15 @@ import ChatModal from './ChatModal';
 import MobileNav from './MobileNav';
 import type { OtherUser } from './ProfileSidebar';
 
+interface MobileFriend {
+  id: string; user_number: number; username?: string; last_seen_at?: string; owned: string[];
+}
+interface MobileLeaderEntry { id: string; user_number: number; username?: string; count: number; }
+interface MobileFriendship {
+  id: string; user_a_id: string; user_b_id: string;
+  status: 'pending'|'accepted'|'blocked_by_a'|'blocked_by_b'; other?: MobileFriend;
+}
+
 type Page = 'shop' | 'profile' | 'login' | 'orders' | 'admin' | 'feedback';
 
 interface ProfilePageProps {
@@ -37,16 +46,60 @@ export default function ProfilePage({ onBack, onNavigate, currentPage, viewingUs
   const fileInputRef = useRef<HTMLInputElement>(null);
   const usernameInputRef = useRef<HTMLInputElement>(null);
 
+  // Mobile social panel state
+  const [mSearchQ, setMSearchQ] = useState('');
+  const [mSearchResults, setMSearchResults] = useState<MobileFriend[]>([]);
+  const [mSearching, setMSearching] = useState(false);
+  const [mFriendships, setMFriendships] = useState<MobileFriendship[]>([]);
+  const [mLeaderTrades, setMLeaderTrades] = useState<MobileLeaderEntry[]>([]);
+  const [mLeaderOwned, setMLeaderOwned] = useState<MobileLeaderEntry[]>([]);
+  const [mLeaderTab, setMLeaderTab] = useState<'trades'|'owned'>('trades');
+  const [mBusy, setMBusy] = useState<string|null>(null);
+
   // Fetch own profile extra fields fresh from DB (handles stale localStorage)
   useEffect(() => {
     if (!user) return;
-    supabase
-      .from('ac_users')
-      .select('bio, island_name, avg_rating, rating_count')
-      .eq('id', user.id)
-      .single()
+    supabase.from('ac_users').select('bio, island_name, avg_rating, rating_count').eq('id', user.id).single()
       .then(({ data }) => { if (data) setOwnExtra(data); });
   }, [user?.id]);
+
+  // Load friendships for mobile panel
+  const loadMFriendships = async () => {
+    if (!user) return;
+    const { data } = await supabase.from('friendships').select('*').or(`user_a_id.eq.${user.id},user_b_id.eq.${user.id}`);
+    if (!data) return;
+    const otherIds = data.map((f: any) => f.user_a_id === user.id ? f.user_b_id : f.user_a_id);
+    let uMap: Record<string, MobileFriend> = {};
+    if (otherIds.length) {
+      const { data: uData } = await supabase.from('ac_users').select('id, user_number, username, owned, last_seen_at').in('id', otherIds);
+      (uData || []).forEach((u: any) => { uMap[u.id] = u; });
+    }
+    setMFriendships(data.map((f: any) => ({ ...f, other: uMap[f.user_a_id === user.id ? f.user_b_id : f.user_a_id] })));
+  };
+
+  // Load leaderboard for mobile panel
+  const loadMLeaderboard = async () => {
+    const { data: td } = await supabase.from('trade_requests').select('requester_id, acceptor_id, villager_name').eq('status', 'completed');
+    const counts: Record<string, number> = {};
+    const vCounts: Record<string, Set<string>> = {};
+    (td || []).forEach((t: any) => {
+      if (t.requester_id) counts[t.requester_id] = (counts[t.requester_id] || 0) + 1;
+      if (t.acceptor_id) counts[t.acceptor_id] = (counts[t.acceptor_id] || 0) + 1;
+      if (t.acceptor_id && t.villager_name) {
+        if (!vCounts[t.acceptor_id]) vCounts[t.acceptor_id] = new Set();
+        vCounts[t.acceptor_id].add(t.villager_name);
+      }
+    });
+    const allIds = Array.from(new Set([...Object.keys(counts), ...Object.keys(vCounts)])).slice(0, 10);
+    if (!allIds.length) return;
+    const { data: uData } = await supabase.from('ac_users').select('id, user_number, username').in('id', allIds);
+    const uMap: Record<string, any> = {};
+    (uData || []).forEach((u: any) => { uMap[u.id] = u; });
+    setMLeaderTrades(Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 10).filter(([id]) => uMap[id]).map(([id, c]) => ({ id, user_number: uMap[id].user_number, username: uMap[id].username, count: c as number })));
+    setMLeaderOwned(Object.entries(vCounts).sort((a, b) => b[1].size - a[1].size).slice(0, 10).filter(([id]) => uMap[id]).map(([id, s]) => ({ id, user_number: uMap[id].user_number, username: uMap[id].username, count: s.size })));
+  };
+
+  useEffect(() => { if (user) { loadMFriendships(); loadMLeaderboard(); } }, [user?.id]);
 
   // Fetch viewing user data when viewingUserId changes
   useEffect(() => {
@@ -374,10 +427,104 @@ export default function ProfilePage({ onBack, onNavigate, currentPage, viewingUs
         </div>
       )}
 
-      {/* Mobile inline — shows sidebar content (search/friends/leaderboard) on mobile */}
-      <div className="psb-mobile-panel">
-        <hr className="psb-mobile-panel-divider" />
-        <ProfileSidebar mobileInline onOpenChat={(fId, other) => setChat({ friendshipId: fId, otherUser: other })} onNavigate={onNavigate} currentPage={currentPage} />
+      {/* ── MOBILE SOCIAL PANEL — only shown on mobile via CSS ── */}
+      <div className="pro-mobile-social">
+        {/* Search */}
+        <div style={{borderTop:'1px solid rgba(255,255,255,0.08)',paddingTop:20,marginTop:16}}>
+          <div style={{fontSize:9,fontWeight:700,letterSpacing:'0.9px',textTransform:'uppercase',color:'rgba(255,255,255,0.4)',marginBottom:10}}>Search Users</div>
+          <div style={{display:'flex',alignItems:'center',gap:8,background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:10,padding:'8px 12px'}}>
+            <span style={{color:'rgba(255,255,255,0.4)'}}>🔍</span>
+            <input
+              type="text"
+              placeholder="Search by username or #ID…"
+              value={mSearchQ}
+              onChange={async e => {
+                const q = e.target.value;
+                setMSearchQ(q);
+                if (!q.trim()) { setMSearchResults([]); return; }
+                setMSearching(true);
+                const num = parseInt(q, 10);
+                let query = supabase.from('ac_users').select('id, user_number, username, owned, last_seen_at').neq('id', user?.id || '').limit(8);
+                if (!isNaN(num) && String(num) === q.trim()) query = query.or(`username.ilike.%${q}%,user_number.eq.${num}`);
+                else query = query.ilike('username', `%${q}%`);
+                const { data } = await query;
+                setMSearchResults(data || []);
+                setMSearching(false);
+              }}
+              style={{flex:1,background:'transparent',border:'none',outline:'none',color:'rgba(255,255,255,0.85)',fontSize:14}}
+            />
+            {mSearchQ && <button onClick={() => { setMSearchQ(''); setMSearchResults([]); }} style={{background:'none',border:'none',color:'rgba(255,255,255,0.4)',cursor:'pointer',fontSize:14}}>✕</button>}
+          </div>
+          {mSearching && <div style={{color:'rgba(255,255,255,0.4)',fontSize:12,paddingTop:8}}>Searching…</div>}
+          {!mSearching && mSearchResults.map(u => (
+            <div key={u.id} onClick={() => onNavigate('profile', u.id)} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 0',borderBottom:'1px solid rgba(255,255,255,0.06)',cursor:'pointer'}}>
+              <div style={{width:8,height:8,borderRadius:'50%',background: (u.last_seen_at && Date.now()-new Date(u.last_seen_at).getTime()<180000) ? '#22c55e' : 'rgba(255,255,255,0.2)',flexShrink:0}} />
+              <div style={{flex:1}}>
+                <div style={{color:'rgba(255,255,255,0.85)',fontSize:14,fontWeight:600}}>{u.username || `#${u.user_number}`}</div>
+                <div style={{color:'rgba(255,255,255,0.4)',fontSize:11}}>#{u.user_number} · {u.owned?.length || 0} owned</div>
+              </div>
+              <span style={{color:'rgba(255,255,255,0.3)',fontSize:18}}>›</span>
+            </div>
+          ))}
+          {!mSearching && mSearchQ && !mSearchResults.length && <div style={{color:'rgba(255,255,255,0.35)',fontSize:12,paddingTop:8}}>No users found</div>}
+        </div>
+
+        {/* Friends */}
+        <div style={{paddingTop:20,marginTop:4}}>
+          <div style={{fontSize:9,fontWeight:700,letterSpacing:'0.9px',textTransform:'uppercase',color:'rgba(255,255,255,0.4)',marginBottom:10}}>
+            Friends ({mFriendships.filter(f=>f.status==='accepted').length})
+            {mFriendships.filter(f=>f.status==='pending'&&f.user_b_id===user?.id).length > 0 && (
+              <span style={{marginLeft:8,background:'rgba(250,204,21,0.2)',color:'#fbbf24',borderRadius:8,padding:'1px 7px',fontSize:10}}>
+                {mFriendships.filter(f=>f.status==='pending'&&f.user_b_id===user?.id).length} pending
+              </span>
+            )}
+          </div>
+          {mFriendships.filter(f=>f.status==='pending'&&f.user_b_id===user?.id).map(f => f.other && (
+            <div key={f.id} style={{display:'flex',alignItems:'center',gap:8,padding:'10px 0',borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
+              <div style={{flex:1,cursor:'pointer'}} onClick={() => f.other && onNavigate('profile', f.other.id)}>
+                <div style={{color:'rgba(255,255,255,0.85)',fontSize:14,fontWeight:600}}>{f.other.username || `#${f.other.user_number}`}</div>
+                <div style={{color:'rgba(255,255,255,0.4)',fontSize:11}}>wants to be friends</div>
+              </div>
+              <button disabled={mBusy===f.id} onClick={async()=>{setMBusy(f.id);await supabase.from('friendships').update({status:'accepted'}).eq('id',f.id);await loadMFriendships();setMBusy(null);}} style={{background:'rgba(34,197,94,0.15)',border:'1px solid rgba(34,197,94,0.3)',color:'#4ade80',borderRadius:6,padding:'4px 10px',cursor:'pointer',fontSize:13}}>✓</button>
+              <button disabled={mBusy===f.id} onClick={async()=>{if(!user||!f.other)return;setMBusy(f.id);await supabase.from('friendships').update({status:'blocked_by_b'}).eq('id',f.id);await loadMFriendships();setMBusy(null);}} style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.2)',color:'#f87171',borderRadius:6,padding:'4px 10px',cursor:'pointer',fontSize:13}}>✕</button>
+            </div>
+          ))}
+          {mFriendships.filter(f=>f.status==='accepted').map(f => f.other && (
+            <div key={f.id} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 0',borderBottom:'1px solid rgba(255,255,255,0.06)',cursor:'pointer'}} onClick={() => f.other && onNavigate('profile', f.other.id)}>
+              <div style={{width:8,height:8,borderRadius:'50%',background:(f.other.last_seen_at&&Date.now()-new Date(f.other.last_seen_at).getTime()<180000)?'#22c55e':'rgba(255,255,255,0.2)',flexShrink:0}} />
+              <div style={{flex:1}}>
+                <div style={{color:'rgba(255,255,255,0.85)',fontSize:14,fontWeight:600}}>{f.other.username || `#${f.other.user_number}`}</div>
+                <div style={{color:'rgba(255,255,255,0.4)',fontSize:11}}>#{f.other.user_number} · {f.other.owned?.length||0} owned</div>
+              </div>
+              <button onClick={e=>{e.stopPropagation();f.other&&setChat({friendshipId:f.id,otherUser:f.other as OtherUser});}} style={{background:'rgba(99,102,241,0.15)',border:'1px solid rgba(99,102,241,0.3)',color:'#a5b4fc',borderRadius:6,padding:'4px 10px',cursor:'pointer',fontSize:13}}>💬</button>
+            </div>
+          ))}
+          {!mFriendships.filter(f=>f.status==='accepted').length && !mFriendships.filter(f=>f.status==='pending'&&f.user_b_id===user?.id).length && (
+            <div style={{color:'rgba(255,255,255,0.3)',fontSize:12,paddingTop:4}}>Search for a user to add friends</div>
+          )}
+        </div>
+
+        {/* Leaderboard */}
+        <div style={{paddingTop:20,marginTop:4,paddingBottom:32}}>
+          <div style={{fontSize:9,fontWeight:700,letterSpacing:'0.9px',textTransform:'uppercase',color:'rgba(255,255,255,0.4)',marginBottom:10}}>Leaderboard</div>
+          <div style={{display:'flex',gap:8,marginBottom:12}}>
+            {(['trades','owned'] as const).map(tab => (
+              <button key={tab} onClick={()=>setMLeaderTab(tab)} style={{background:mLeaderTab===tab?'rgba(255,255,255,0.14)':'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.1)',color:mLeaderTab===tab?'rgba(255,255,255,0.9)':'rgba(255,255,255,0.45)',borderRadius:8,padding:'4px 12px',cursor:'pointer',fontSize:12}}>
+                {tab==='trades'?'🔄 Trades':'✓ Verified'}
+              </button>
+            ))}
+          </div>
+          {(mLeaderTab==='trades'?mLeaderTrades:mLeaderOwned).length===0
+            ? <div style={{color:'rgba(255,255,255,0.3)',fontSize:12}}>No data yet</div>
+            : (mLeaderTab==='trades'?mLeaderTrades:mLeaderOwned).map((e,i) => (
+              <div key={e.id} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
+                <span style={{color:'rgba(255,255,255,0.5)',fontSize:13,width:20,textAlign:'center'}}>{['🥇','🥈','🥉'][i]||i+1}</span>
+                <span style={{flex:1,color:'rgba(255,255,255,0.85)',fontSize:14}}>{e.username||`#${e.user_number}`}</span>
+                <span style={{color:'rgba(255,255,255,0.4)',fontSize:12}}>{e.count}</span>
+              </div>
+            ))
+          }
+        </div>
       </div>
 
     </div>

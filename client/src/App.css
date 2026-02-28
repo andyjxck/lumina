@@ -2856,6 +2856,8 @@ body::before {
 
 /* Mobile inline profile sidebar panel — hidden on desktop */
 .psb-mobile-panel { display: none; }
+/* New self-contained mobile social panel */
+.pro-mobile-social { display: none; }
 .psb-mobile-inline {
   display: flex;
   flex-direction: column;
@@ -8631,6 +8633,7 @@ body::before {
 
   /* Show inline profile sidebar panel on mobile */
   .psb-mobile-panel    { display: block !important; }
+  .pro-mobile-social   { display: block !important; }
   /* Ensure inline sidebar search bar background is visible */
   .psb-mobile-inline .sidebar-search-bare {
     background: rgba(255,255,255,0.07);

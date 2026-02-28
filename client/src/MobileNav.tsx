@@ -241,52 +241,6 @@ export default function MobileNav({
             </div>
           )}
 
-          {pageContent.extraContent === 'ranks_friends' && (
-            <div className="mobnav-extra-content">
-              <div className="mobnav-section">
-                <div className="mobnav-section-label">My Rank</div>
-                <div className="mobnav-rank-info">
-                  <div className="mobnav-rank-badge">🌟 Gold</div>
-                  <div className="mobnav-rank-details">Level 42</div>
-                </div>
-              </div>
-              <div className="mobnav-section">
-                <div className="mobnav-section-label">My Friends</div>
-                <div className="mobnav-friends-list">
-                  <div className="mobnav-friend-item">
-                    <span className="mobnav-friend-avatar">👤</span>
-                    <span className="mobnav-friend-name">Alice</span>
-                    <span className="mobnav-friend-status online">●</span>
-                  </div>
-                  <div className="mobnav-friend-item">
-                    <span className="mobnav-friend-avatar">👤</span>
-                    <span className="mobnav-friend-name">Bob</span>
-                    <span className="mobnav-friend-status offline">●</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {pageContent.extraContent === 'feedback_cards' && (
-            <div className="mobnav-extra-content">
-              <div className="mobnav-section">
-                <div className="mobnav-section-label">Recent Feedback</div>
-                <div className="mobnav-feedback-list">
-                  <div className="mobnav-feedback-item">
-                    <div className="mobnav-feedback-category">Help</div>
-                    <div className="mobnav-feedback-preview">How do I trade villagers?</div>
-                    <div className="mobnav-feedback-status">Open</div>
-                  </div>
-                  <div className="mobnav-feedback-item">
-                    <div className="mobnav-feedback-category">Bug</div>
-                    <div className="mobnav-feedback-preview">App crashes on profile page</div>
-                    <div className="mobnav-feedback-status">In Progress</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Close handle */}
           <div className="mobnav-drawer-handle">

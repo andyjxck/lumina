@@ -13,6 +13,7 @@ import VillagerGrid from './VillagerGrid';
 import TradesPage from './TradesPage';
 import AdminPage from './AdminPage';
 import FeedbackPage from './FeedbackPage';
+import bgImage from './bg.png';
 
 type Page = 'shop' | 'profile' | 'login' | 'orders' | 'admin' | 'feedback';
 
@@ -37,9 +38,41 @@ function ShopInner() {
   const [page, setPage] = useState<Page>('shop');
   const [viewingUserId, setViewingUserId] = useState<string | undefined>();
 
+  // Hash routing - sync page state with URL hash
   useEffect(() => {
-    if (!user) setPage('shop');
-  }, [user]);
+    const handleHashChange = () => {
+      const hash = window.location.hash.slice(1); // Remove #
+      if (hash) {
+        const [pageName, userId] = hash.split('/');
+        if (pageName && ['shop', 'profile', 'login', 'orders', 'admin', 'feedback'].includes(pageName)) {
+          setPage(pageName as Page);
+          if (userId) {
+            setViewingUserId(userId);
+          }
+        }
+      } else {
+        setPage('shop');
+        setViewingUserId(undefined);
+      }
+    };
+
+    // Set initial page from hash
+    handleHashChange();
+
+    // Listen for hash changes
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  // Update hash when page changes
+  useEffect(() => {
+    const hash = viewingUserId ? `#${page}/${viewingUserId}` : `#${page}`;
+    window.location.hash = hash.slice(1); // Remove # for cleaner URL
+  }, [page, viewingUserId]);
+
+  useEffect(() => {
+    if (!user && page !== 'login') setPage('shop');
+  }, [user, page]);
 
   const getFilteredVillagers = () => {
     let filtered = [...VILLAGERS];
@@ -178,38 +211,44 @@ function ShopInner() {
 
   return (
     <div className="app-layout">
-      <Sidebar
-        open={sidebarOpen}
-        onToggle={() => setSidebarOpen(o => !o)}
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        showSearch={showSearch}
-        onSearchFocus={() => setShowSearch(true)}
-        searchResults={getFilteredVillagers()}
-        basket={basket}
-        onToggleBasket={toggleBasket}
-        selectedSpecies={selectedSpecies}
-        setSelectedSpecies={setSelectedSpecies}
-        selectedPersonalities={selectedPersonalities}
-        setSelectedPersonalities={setSelectedPersonalities}
-        selectedGenders={selectedGenders}
-        setSelectedGenders={setSelectedGenders}
-        openFilter={openFilter}
-        setOpenFilter={setOpenFilter}
-        onNavigate={(newPage, userId) => { setPage(newPage); setViewingUserId(userId); }}
-        currentPage={page}
-      />
+      {/* Web Sidebar - hidden on mobile */}
+      <div className="web-sidebar-only">
+        <Sidebar
+          open={sidebarOpen}
+          onToggle={() => setSidebarOpen(o => !o)}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          showSearch={showSearch}
+          onSearchFocus={() => setShowSearch(true)}
+          searchResults={getFilteredVillagers()}
+          basket={basket}
+          onToggleBasket={toggleBasket}
+          selectedSpecies={selectedSpecies}
+          setSelectedSpecies={setSelectedSpecies}
+          selectedPersonalities={selectedPersonalities}
+          setSelectedPersonalities={setSelectedPersonalities}
+          selectedGenders={selectedGenders}
+          setSelectedGenders={setSelectedGenders}
+          openFilter={openFilter}
+          setOpenFilter={setOpenFilter}
+          onNavigate={(newPage, userId) => { setPage(newPage); setViewingUserId(userId); }}
+          currentPage={page}
+        />
+      </div>
 
-      <MobileNav
-        currentPage={page}
-        onNavigate={(p) => setPage(p)}
-        selectedSpecies={selectedSpecies}
-        setSelectedSpecies={setSelectedSpecies}
-        selectedPersonalities={selectedPersonalities}
-        setSelectedPersonalities={setSelectedPersonalities}
-        selectedGenders={selectedGenders}
-        setSelectedGenders={setSelectedGenders}
-      />
+      {/* Mobile Navigation - shown on mobile */}
+      <div className="mobile-nav-only">
+        <MobileNav
+          currentPage={page}
+          onNavigate={(p) => setPage(p)}
+          selectedSpecies={selectedSpecies}
+          setSelectedSpecies={setSelectedSpecies}
+          selectedPersonalities={selectedPersonalities}
+          setSelectedPersonalities={setSelectedPersonalities}
+          selectedGenders={selectedGenders}
+          setSelectedGenders={setSelectedGenders}
+        />
+      </div>
 
       <main className={`main-content ${sidebarOpen ? 'with-sidebar' : ''}`}>
         {/* Mobile Search Bar - only show on mobile */}
@@ -235,6 +274,7 @@ function ShopInner() {
           onToggleBasket={toggleBasket}
           expandedCard={expandedCard}
           onExpandCard={setExpandedCard}
+          sidebarOpen={sidebarOpen}
         />
       </main>
 
@@ -391,6 +431,11 @@ function ShopInner() {
 }
 
 function App() {
+  // Set CSS variable for background image
+  useEffect(() => {
+    document.documentElement.style.setProperty('--bg-image', `url(${bgImage})`);
+  }, [bgImage]);
+
   return (
     <AuthProvider>
       <NotificationProvider>

@@ -114,19 +114,12 @@ export default function ProfilePage({ onBack, onNavigate, currentPage, viewingUs
     <MobileNav
       currentPage={currentPage}
       onNavigate={onNavigate}
-      searchTerm=""
-      onSearchChange={() => {}}
-      searchResults={[]}
-      basket={[]}
-      onToggleBasket={() => {}}
       selectedSpecies={[]}
       setSelectedSpecies={() => {}}
       selectedPersonalities={[]}
       setSelectedPersonalities={() => {}}
       selectedGenders={[]}
       setSelectedGenders={() => {}}
-      openFilter={null}
-      setOpenFilter={() => {}}
     />
     <div className="profile-layout">
     <div className="profile-page">

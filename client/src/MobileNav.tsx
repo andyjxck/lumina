@@ -20,11 +20,11 @@ interface MobileNavProps {
   currentPage: Page;
   onNavigate: (page: Page) => void;
   selectedSpecies: string[];
-  setSelectedSpecies: (v: string[]) => void;
+  setSelectedSpecies: (v: string[] | ((prev: string[]) => string[])) => void;
   selectedPersonalities: string[];
-  setSelectedPersonalities: (v: string[]) => void;
+  setSelectedPersonalities: (v: string[] | ((prev: string[]) => string[])) => void;
   selectedGenders: string[];
-  setSelectedGenders: (v: string[]) => void;
+  setSelectedGenders: (v: string[] | ((prev: string[]) => string[])) => void;
 }
 
 export default function MobileNav({
@@ -39,6 +39,56 @@ export default function MobileNav({
 }: MobileNavProps) {
   const { user } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  // Get page-specific content for mobile nav
+  const getPageContent = () => {
+    switch (currentPage) {
+      case 'shop':
+        return {
+          title: 'Marketplace',
+          showFilters: true,
+          showCategories: true,
+          extraContent: null
+        };
+      case 'profile':
+        return {
+          title: user ? (user.username || `#${user.user_number}`) : 'Profile',
+          showFilters: false,
+          showCategories: false,
+          extraContent: 'ranks_friends'
+        };
+      case 'orders':
+        return {
+          title: 'Trades',
+          showFilters: false,
+          showCategories: false,
+          extraContent: null
+        };
+      case 'feedback':
+        return {
+          title: 'Feedback',
+          showFilters: false,
+          showCategories: false,
+          extraContent: 'feedback_cards'
+        };
+      case 'admin':
+        return {
+          title: 'Admin',
+          showFilters: false,
+          showCategories: false,
+          extraContent: 'feedback_cards'
+        };
+      default:
+        return {
+          title: 'Menu',
+          showFilters: false,
+          showCategories: false,
+          extraContent: null
+        };
+    }
+  };
+
+  const pageContent = getPageContent();
   // Prevent body scroll when dropdown is open
   useEffect(() => {
     if (dropdownOpen) {
@@ -90,7 +140,12 @@ export default function MobileNav({
             <img src="/logo192.png" alt="Dreamie Store" className="mobnav-logo-img" />
           </div>
 
-          {/* Navigation - same order as web sidebar */}
+          {/* Page Title */}
+          <div className="mobnav-page-title">
+            <h2>{pageContent.title}</h2>
+          </div>
+
+          {/* Navigation - always show navigation tabs */}
           <div className="mobnav-nav">
             <NavItem icon="🛒" label="Market" active={currentPage === 'shop'} onClick={() => { onNavigate('shop'); setDropdownOpen(false); }} />
             <NavItem icon="⇄" label="Trades" active={currentPage === 'orders'} onClick={() => { onNavigate('orders'); setDropdownOpen(false); }} />
@@ -106,40 +161,123 @@ export default function MobileNav({
             )}
           </div>
 
-          {/* Filters */}
-          <div className="mobnav-filters">
-            <div className="mobnav-filter-section">
-              <div className="mobnav-filter-label">Gender</div>
-              <div className="mobnav-filter-chips">
-                <button
-                  className={`mobnav-filter-chip ${selectedGenders.includes('male') ? 'active' : ''}`}
-                  onClick={() => setSelectedGenders(prev => 
-                    prev.includes('male') ? prev.filter(g => g !== 'male') : [...prev, 'male']
-                  )}
-                >
-                  Male
+          {/* Page-specific content */}
+          {pageContent.showFilters && (
+            <div className="mobnav-filters">
+              <div className="mobnav-filter-section">
+                <div className="mobnav-filter-label">Gender</div>
+                <div className="mobnav-filter-chips">
+                  <button
+                    className={`mobnav-filter-chip ${selectedGenders.includes('male') ? 'active' : ''}`}
+                    onClick={() => setSelectedGenders((prev: string[]) => 
+                      prev.includes('male') ? prev.filter((g: string) => g !== 'male') : [...prev, 'male']
+                    )}
+                  >
+                    Male
+                  </button>
+                  <button
+                    className={`mobnav-filter-chip ${selectedGenders.includes('female') ? 'active' : ''}`}
+                    onClick={() => setSelectedGenders((prev: string[]) => 
+                      prev.includes('female') ? prev.filter((g: string) => g !== 'female') : [...prev, 'female']
+                    )}
+                  >
+                    Female
+                  </button>
+                </div>
+              </div>
+
+              <div className="mobnav-filter-section">
+                <div className="mobnav-filter-label">Personality</div>
+                <div className="mobnav-filter-chips">
+                  {['Lazy', 'Normal', 'Peppy', 'Snooty', 'Cranky', 'Jock', 'Smug', 'Uchi'].map(personality => (
+                    <button
+                      key={personality}
+                      className={`mobnav-filter-chip ${selectedPersonalities.includes(personality) ? 'active' : ''}`}
+                      onClick={() => setSelectedPersonalities((prev: string[]) => 
+                        prev.includes(personality) ? prev.filter((p: string) => p !== personality) : [...prev, personality]
+                      )}
+                    >
+                      {personality}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mobnav-filter-section">
+                <div className="mobnav-filter-label">Species</div>
+                <div className="mobnav-filter-chips">
+                  {['Cat', 'Dog', 'Elephant', 'Fox', 'Frog', 'Hamster', 'Horse', 'Koala', 'Lion', 'Monkey', 'Octopus', 'Penguin', 'Rabbit', 'Rhino', 'Tiger', 'Wolf'].map(species => (
+                    <button
+                      key={species}
+                      className={`mobnav-filter-chip ${selectedSpecies.includes(species) ? 'active' : ''}`}
+                      onClick={() => setSelectedSpecies((prev: string[]) => 
+                        prev.includes(species) ? prev.filter((s: string) => s !== species) : [...prev, species]
+                      )}
+                    >
+                      {species}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              {(selectedSpecies.length > 0 || selectedPersonalities.length > 0 || selectedGenders.length > 0) && (
+                <button className="mobnav-clear-filters" onClick={() => {
+                  setSelectedSpecies([]);
+                  setSelectedPersonalities([]);
+                  setSelectedGenders([]);
+                }}>
+                  Clear All Filters
                 </button>
-                <button
-                  className={`mobnav-filter-chip ${selectedGenders.includes('female') ? 'active' : ''}`}
-                  onClick={() => setSelectedGenders(prev => 
-                    prev.includes('female') ? prev.filter(g => g !== 'female') : [...prev, 'female']
-                  )}
-                >
-                  Female
-                </button>
+              )}
+            </div>
+          )}
+
+          {pageContent.extraContent === 'ranks_friends' && (
+            <div className="mobnav-extra-content">
+              <div className="mobnav-section">
+                <div className="mobnav-section-label">My Rank</div>
+                <div className="mobnav-rank-info">
+                  <div className="mobnav-rank-badge">🌟 Gold</div>
+                  <div className="mobnav-rank-details">Level 42</div>
+                </div>
+              </div>
+              <div className="mobnav-section">
+                <div className="mobnav-section-label">My Friends</div>
+                <div className="mobnav-friends-list">
+                  <div className="mobnav-friend-item">
+                    <span className="mobnav-friend-avatar">👤</span>
+                    <span className="mobnav-friend-name">Alice</span>
+                    <span className="mobnav-friend-status online">●</span>
+                  </div>
+                  <div className="mobnav-friend-item">
+                    <span className="mobnav-friend-avatar">👤</span>
+                    <span className="mobnav-friend-name">Bob</span>
+                    <span className="mobnav-friend-status offline">●</span>
+                  </div>
+                </div>
               </div>
             </div>
-            
-            {(selectedSpecies.length > 0 || selectedPersonalities.length > 0 || selectedGenders.length > 0) && (
-              <button className="mobnav-clear-filters" onClick={() => {
-                setSelectedSpecies([]);
-                setSelectedPersonalities([]);
-                setSelectedGenders([]);
-              }}>
-                Clear All Filters
-              </button>
-            )}
-          </div>
+          )}
+
+          {pageContent.extraContent === 'feedback_cards' && (
+            <div className="mobnav-extra-content">
+              <div className="mobnav-section">
+                <div className="mobnav-section-label">Recent Feedback</div>
+                <div className="mobnav-feedback-list">
+                  <div className="mobnav-feedback-item">
+                    <div className="mobnav-feedback-category">Help</div>
+                    <div className="mobnav-feedback-preview">How do I trade villagers?</div>
+                    <div className="mobnav-feedback-status">Open</div>
+                  </div>
+                  <div className="mobnav-feedback-item">
+                    <div className="mobnav-feedback-category">Bug</div>
+                    <div className="mobnav-feedback-preview">App crashes on profile page</div>
+                    <div className="mobnav-feedback-status">In Progress</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Close handle */}
           <div className="mobnav-drawer-handle">

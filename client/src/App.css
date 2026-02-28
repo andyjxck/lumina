@@ -6897,6 +6897,7 @@ body::before {
 .trades-layout,
 .feedback-layout {
   display: block;
+  overflow-x: hidden;
 }
 
 /* Hide web sidebar on mobile for all pages */

@@ -7634,21 +7634,11 @@ body::before {
 
   /* Hide web sidebar on mobile, show mobile nav only on mobile */
   .web-sidebar-only {
-    display: block !important;
-  }
-
-  .mobile-nav-only {
     display: none !important;
   }
 
-  @media (max-width: 768px) {
-    .web-sidebar-only {
-      display: none !important;
-    }
-
-    .mobile-nav-only {
-      display: block !important;
-    }
+  .mobile-nav-only {
+    display: block !important;
   }
 
   /* Mobile Search Bar */

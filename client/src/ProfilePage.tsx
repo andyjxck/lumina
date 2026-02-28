@@ -33,8 +33,20 @@ export default function ProfilePage({ onBack, onNavigate, currentPage, viewingUs
   const [savingExtra, setSavingExtra] = useState(false);
   const [chat, setChat] = useState<{ friendshipId: string; otherUser: OtherUser } | null>(null);
   const [viewingUser, setViewingUser] = useState<OtherUser | null>(null);
+  const [ownExtra, setOwnExtra] = useState<{ bio: string|null; island_name: string|null; avg_rating: number|null; rating_count: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const usernameInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch own profile extra fields fresh from DB (handles stale localStorage)
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('ac_users')
+      .select('bio, island_name, avg_rating, rating_count')
+      .eq('id', user.id)
+      .single()
+      .then(({ data }) => { if (data) setOwnExtra(data); });
+  }, [user?.id]);
 
   // Fetch viewing user data when viewingUserId changes
   useEffect(() => {
@@ -55,9 +67,12 @@ export default function ProfilePage({ onBack, onNavigate, currentPage, viewingUs
     }
   }, [viewingUserId, user?.id]);
 
-  // Display viewing user or current user
-  const displayUser = viewingUser || user;
-  if (!displayUser) return null;
+  // Display viewing user or current user; merge fresh DB fields for own profile
+  const baseUser = viewingUser || user;
+  if (!baseUser) return null;
+  const displayUser = (!viewingUser && ownExtra)
+    ? { ...baseUser, ...ownExtra }
+    : baseUser;
 
   const handleSaveUsername = async () => {
     if (!user) return;
@@ -359,8 +374,9 @@ export default function ProfilePage({ onBack, onNavigate, currentPage, viewingUs
         </div>
       )}
 
-      {/* Mobile inline — shows sidebar content in main area on mobile */}
+      {/* Mobile inline — shows sidebar content (search/friends/leaderboard) on mobile */}
       <div className="psb-mobile-panel">
+        <hr className="psb-mobile-panel-divider" />
         <ProfileSidebar mobileInline onOpenChat={(fId, other) => setChat({ friendshipId: fId, otherUser: other })} onNavigate={onNavigate} currentPage={currentPage} />
       </div>
 

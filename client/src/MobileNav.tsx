@@ -153,9 +153,9 @@ export default function MobileNav({
             <NavItem icon="⇄" label="Trades" active={currentPage === 'orders'} onClick={() => { onNavigate('orders'); setDropdownOpen(false); }} />
             <NavItem 
               icon="👤"
-              label={user ? (user.username || `#${user.user_number}`) : 'Profile'}
-              active={currentPage === 'profile'}
-              onClick={() => { onNavigate('profile'); setDropdownOpen(false); }}
+              label={user ? (user.username || `#${user.user_number}`) : 'Log In'}
+              active={currentPage === 'profile' || currentPage === 'login'}
+              onClick={() => { onNavigate(user ? 'profile' : 'login'); setDropdownOpen(false); }}
             />
             <NavItem icon="💬" label="Feedback" active={currentPage === 'feedback'} onClick={() => { onNavigate('feedback'); setDropdownOpen(false); }} />
             {user?.user_number === 0 && (

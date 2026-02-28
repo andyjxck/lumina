@@ -8060,9 +8060,11 @@ body::before {
   .mobnav-drawer {
     border-radius: 0 0 28px 28px !important;
     z-index: 696 !important;
-    overflow-y: visible !important;
-    padding: 52px 20px 24px !important;
+    overflow: hidden !important;
+    padding: 52px 20px 0 !important;
     box-shadow: 0 12px 60px rgba(0,0,0,0.65), inset 0 -1px 0 rgba(255,255,255,0.07) !important;
+    display: flex !important;
+    flex-direction: column !important;
   }
 
   /* Drawer handle and close button */

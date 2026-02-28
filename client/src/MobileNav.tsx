@@ -191,6 +191,8 @@ export default function MobileNav({
             )}
           </div>
 
+          <div style={{overflowY:'auto',flex:1,WebkitOverflowScrolling:'touch'}}>
+
           {/* Extra filters (e.g. trades) */}
           {extraFilters && (
             <div className="mobnav-filters">
@@ -383,6 +385,8 @@ export default function MobileNav({
               </div>
             </div>
           )}
+
+          </div>{/* end scrollable */}
 
           {/* Close handle */}
           <div className="mobnav-drawer-handle">

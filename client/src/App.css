@@ -7578,7 +7578,7 @@ body::before {
     right: 0 !important;
     height: auto !important;
     max-height: 90vh !important;
-    background: linear-gradient(135deg, rgba(30,27,75,0.97) 0%, rgba(49,46,129,0.97) 100%) !important;
+    background: linear-gradient(160deg, #0f1108 0%, #181a06 40%, #12140a 100%) !important;
     backdrop-filter: blur(20px) !important;
     border-bottom-left-radius: 24px !important;
     border-bottom-right-radius: 24px !important;

@@ -7578,7 +7578,7 @@ body::before {
     right: 0 !important;
     height: auto !important;
     max-height: 90vh !important;
-    background: linear-gradient(180deg, rgba(17,24,39,0.98) 0%, rgba(17,24,39,0.95) 100%) !important;
+    background: linear-gradient(135deg, rgba(30,27,75,0.97) 0%, rgba(49,46,129,0.97) 100%) !important;
     backdrop-filter: blur(20px) !important;
     border-bottom-left-radius: 24px !important;
     border-bottom-right-radius: 24px !important;
@@ -7973,13 +7973,13 @@ body::before {
   }
 
   .villager-grid-horizontal .alphabet-btn-top.active {
-    background: rgba(99,102,241,0.3) !important;
+    background: transparent !important;
     border: none !important;
-    color: #818cf8 !important;
+    color: rgba(255,255,255,0.6) !important;
   }
 
   .villager-grid-horizontal .alphabet-btn-top.current {
-    background: rgba(99,102,241,0.5) !important;
+    background: transparent !important;
     border: none !important;
     color: white !important;
   }

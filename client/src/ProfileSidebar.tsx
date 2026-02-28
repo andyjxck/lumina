@@ -19,6 +19,10 @@ export interface OtherUser {
   favourites: string[];
   wishlist: string[];
   last_seen_at?: string;
+  bio?: string | null;
+  island_name?: string | null;
+  avg_rating?: number | null;
+  rating_count?: number;
 }
 
 interface Friendship {

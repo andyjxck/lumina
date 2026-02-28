@@ -216,9 +216,9 @@ export default function ProfilePage({ onBack, onNavigate, currentPage, viewingUs
                 <button className="pro-meta-cancel" onClick={() => setEditingIsland(false)}>✕</button>
               </span>
             ) : (
-              <span className="pro-meta-val pro-meta-editable" onClick={() => { if (isOwnProfile) { setIslandInput((user as any)?.island_name || ''); setEditingIsland(true); } }}>
-                {(displayUser as any).island_name || (isOwnProfile ? <span className="pro-meta-placeholder">Add island name ✎</span> : <span className="pro-meta-placeholder">No island name</span>)}
-                {isOwnProfile && (displayUser as any).island_name && <span className="pro-meta-edit-hint"> ✎</span>}
+              <span className="pro-meta-val pro-meta-editable" onClick={() => { if (isOwnProfile) { setIslandInput(user?.island_name || ''); setEditingIsland(true); } }}>
+                {displayUser.island_name || (isOwnProfile ? <span className="pro-meta-placeholder">Add island name ✎</span> : <span className="pro-meta-placeholder">No island name</span>)}
+                {isOwnProfile && displayUser.island_name && <span className="pro-meta-edit-hint"> ✎</span>}
               </span>
             )}
           </div>
@@ -233,18 +233,18 @@ export default function ProfilePage({ onBack, onNavigate, currentPage, viewingUs
                 <button className="pro-meta-cancel" onClick={() => setEditingBio(false)}>✕</button>
               </span>
             ) : (
-              <span className="pro-meta-val pro-meta-editable" onClick={() => { if (isOwnProfile) { setBioInput((user as any)?.bio || ''); setEditingBio(true); } }}>
-                {(displayUser as any).bio || (isOwnProfile ? <span className="pro-meta-placeholder">Add a bio ✎</span> : <span className="pro-meta-placeholder">No bio</span>)}
-                {isOwnProfile && (displayUser as any).bio && <span className="pro-meta-edit-hint"> ✎</span>}
+              <span className="pro-meta-val pro-meta-editable" onClick={() => { if (isOwnProfile) { setBioInput(user?.bio || ''); setEditingBio(true); } }}>
+                {displayUser.bio || (isOwnProfile ? <span className="pro-meta-placeholder">Add a bio ✎</span> : <span className="pro-meta-placeholder">No bio</span>)}
+                {isOwnProfile && displayUser.bio && <span className="pro-meta-edit-hint"> ✎</span>}
               </span>
             )}
           </div>
 
           {/* Rating */}
-          {((displayUser as any).rating_count > 0) && (
+          {((displayUser.rating_count ?? 0) > 0) && (
             <div className="pro-meta-row">
               <span className="pro-meta-icon">⭐</span>
-              <span className="pro-meta-val">{parseFloat((displayUser as any).avg_rating).toFixed(1)} <span className="pro-meta-dim">({(displayUser as any).rating_count} ratings)</span></span>
+              <span className="pro-meta-val">{displayUser.avg_rating ? parseFloat(String(displayUser.avg_rating)).toFixed(1) : '—'} <span className="pro-meta-dim">({displayUser.rating_count} ratings)</span></span>
             </div>
           )}
         </div>

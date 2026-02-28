@@ -86,6 +86,10 @@ export default function LoginPage({ onLogin, onBack }: LoginPageProps) {
       favourites: [],
       wishlist: [],
       verified_cards: [],
+      bio: null,
+      island_name: null,
+      avg_rating: null,
+      rating_count: 0,
     };
     setNewUser(profile);
     setLoading(false);

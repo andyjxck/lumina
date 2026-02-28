@@ -14,6 +14,10 @@ export interface UserProfile {
   favourites: string[];
   wishlist: string[];
   verified_cards: string[];
+  bio: string | null;
+  island_name: string | null;
+  avg_rating: number | null;
+  rating_count: number;
 }
 
 interface AuthContextType {
@@ -83,6 +87,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       favourites: data.favourites || [],
       wishlist: data.wishlist || [],
       verified_cards: data.verified_cards || [],
+      bio: data.bio || null,
+      island_name: data.island_name || null,
+      avg_rating: data.avg_rating || null,
+      rating_count: data.rating_count || 0,
     };
     setUser(profile);
     localStorage.setItem('ac_user', JSON.stringify(profile));

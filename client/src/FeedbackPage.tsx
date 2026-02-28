@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { supabase } from './AuthContext';
 import ChatModal from './ChatModal';
@@ -12,6 +12,7 @@ interface FeedbackPageProps {
 
 export default function FeedbackPage({ onBack, onNavigate, currentPage }: FeedbackPageProps) {
   const { user } = useAuth();
+  const closeDrawerRef = useRef<(() => void) | null>(null);
   const [category, setCategory] = useState('');
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -111,12 +112,12 @@ export default function FeedbackPage({ onBack, onNavigate, currentPage }: Feedba
       ) : feedbackTickets.length === 0 ? (
         <div style={{color:'rgba(255,255,255,0.3)',fontSize:12}}>No tickets yet</div>
       ) : feedbackTickets.map((ticket: any) => (
-        <div key={ticket.id} onClick={()=>setSelectedTicket(ticket)} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 0',borderBottom:'1px solid rgba(255,255,255,0.06)',cursor:'pointer'}}>
+        <div key={ticket.id} onClick={()=>{ setSelectedTicket(ticket); closeDrawerRef.current?.(); }} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 0',borderBottom:'1px solid rgba(255,255,255,0.06)',cursor:'pointer'}}>
           <div style={{flex:1}}>
             <div style={{color:'rgba(255,255,255,0.85)',fontSize:13,fontWeight:600}}>{ticket.category}</div>
             <div style={{color:'rgba(255,255,255,0.4)',fontSize:11}}>{new Date(ticket.created_at).toLocaleDateString()} · {ticket.message.substring(0,50)}…</div>
           </div>
-          <button onClick={e=>{e.stopPropagation();setSelectedTicket(ticket);setAdminChatOpen(true);}} style={{background:'none',border:'none',color:'rgba(255,255,255,0.4)',cursor:'pointer',fontSize:16}}>💬</button>
+          <button onClick={e=>{e.stopPropagation();setSelectedTicket(ticket);setAdminChatOpen(true);closeDrawerRef.current?.();}} style={{background:'none',border:'none',color:'rgba(255,255,255,0.4)',cursor:'pointer',fontSize:16}}>💬</button>
         </div>
       ))}
     </div>
@@ -128,6 +129,7 @@ export default function FeedbackPage({ onBack, onNavigate, currentPage }: Feedba
       currentPage={currentPage as any}
       onNavigate={onNavigate}
       extraFilters={ticketsDrawerContent}
+      onCloseDrawer={fn => { closeDrawerRef.current = fn; }}
     />
     <div className="feedback-layout">
       <div className="psb-sidebar">

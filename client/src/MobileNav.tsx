@@ -35,6 +35,7 @@ interface MobileNavProps {
   selectedGenders?: string[];
   setSelectedGenders?: (v: string[] | ((prev: string[]) => string[])) => void;
   extraFilters?: React.ReactNode;
+  onCloseDrawer?: (fn: () => void) => void;
   profileSocial?: {
     friendships: MobileFriendship[];
     leaderTrades: MobileLeaderEntry[];
@@ -57,11 +58,17 @@ export default function MobileNav({
   selectedGenders = [],
   setSelectedGenders = () => {},
   extraFilters,
+  onCloseDrawer,
   profileSocial,
 }: MobileNavProps) {
   const [leaderTab, setLeaderTab] = useState<'trades'|'owned'>('trades');
   const { user } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  // Expose close function to parent
+  React.useEffect(() => {
+    if (onCloseDrawer) onCloseDrawer(() => setDropdownOpen(false));
+  }, [onCloseDrawer]);
 
   // Get page-specific content for mobile nav
   const getPageContent = () => {

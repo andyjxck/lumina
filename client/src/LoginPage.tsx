@@ -207,6 +207,7 @@ export default function LoginPage({ onLogin, onBack }: LoginPageProps) {
               className="login-input"
               placeholder="Username (optional)"
               value={username}
+              maxLength={40}
               onChange={e => setUsername(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleStartSignup()}
             />
@@ -248,6 +249,7 @@ export default function LoginPage({ onLogin, onBack }: LoginPageProps) {
               type="password"
               placeholder={secretType === 'pin' ? 'Enter PIN (numbers)' : 'Enter password'}
               value={secret}
+              maxLength={100}
               onChange={e => setSecret(e.target.value)}
               inputMode={secretType === 'pin' ? 'numeric' : 'text'}
             />

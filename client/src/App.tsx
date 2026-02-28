@@ -117,10 +117,6 @@ function ShopInner() {
     if (!user) { setPage('login'); return; }
     setSubmitting(true);
     
-    console.log('Current user data:', user);
-    console.log('User ID:', user.id);
-    console.log('User number:', user.user_number);
-
     // Verify user exists in ac_users table
     const { data: userCheck, error: userCheckError } = await supabase
       .from('ac_users')
@@ -128,10 +124,7 @@ function ShopInner() {
       .eq('id', user.id)
       .single();
     
-    console.log('User verification:', { userCheck, userCheckError });
-    
     if (userCheckError || !userCheck) {
-      console.error('User not found in ac_users table!');
       setSubmitting(false);
       return;
     }
@@ -144,17 +137,8 @@ function ShopInner() {
       .in('status', ['open', 'ongoing'])
       .in('villager_name', basket);
 
-    console.log('Existing requests check:', { existing, existingError, basket });
-    
-    if (existingError) {
-      console.error('Error checking existing requests:', existingError);
-    }
-
     const alreadyActive = new Set((existing || []).map((r: any) => r.villager_name));
-    console.log('Already active villagers:', Array.from(alreadyActive));
-    console.log('Basket before filtering:', basket);
     const filteredBasket = basket.filter(v => !alreadyActive.has(v));
-    console.log('Basket after filtering:', filteredBasket);
     
     const newRows = filteredBasket
       .map(villager => {
@@ -181,22 +165,7 @@ function ShopInner() {
       });
 
     if (newRows.length > 0) {
-      console.log('Inserting trade requests:', newRows);
-      console.log('User ID:', user.id);
-      console.log('Plot available:', plotAvailable);
-      
-      const { data, error } = await supabase.from('trade_requests').insert(newRows);
-      
-      if (error) {
-        console.error('Error inserting trade requests:', error);
-        console.error('Error details:', error.details);
-        console.error('Error hint:', error.hint);
-        console.error('Error code:', error.code);
-      } else {
-        console.log('Successfully inserted trade requests:', data);
-      }
-    } else {
-      console.log('No new rows to insert - all villagers already have active requests');
+      await supabase.from('trade_requests').insert(newRows);
     }
     setSubmitting(false);
     setSubmitted(true);

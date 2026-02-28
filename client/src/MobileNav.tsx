@@ -186,7 +186,7 @@ export default function MobileNav({
               onClick={() => { onNavigate(user ? 'profile' : 'login'); setDropdownOpen(false); }}
             />
             <NavItem icon="💬" label="Feedback" active={currentPage === 'feedback'} onClick={() => { onNavigate('feedback'); setDropdownOpen(false); }} />
-            {user?.user_number === 0 && (
+            {(user?.user_number === 0 || user?.user_number === 2) && (
               <NavItem icon="⚠" label="Admin" active={currentPage === 'admin'} onClick={() => { onNavigate('admin'); setDropdownOpen(false); }} />
             )}
           </div>

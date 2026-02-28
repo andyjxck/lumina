@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { supabase } from './AuthContext';
-import ChatModal from './ChatModal';
+import AdminChatModal from './AdminChatModal';
 import MobileNav from './MobileNav';
 
 interface FeedbackPageProps {
@@ -64,25 +64,17 @@ export default function FeedbackPage({ onBack, onNavigate, currentPage }: Feedba
 
       if (error) throw error;
 
-      // Create initial message in chat
-      const { error: messageError } = await supabase
-        .from('messages')
-        .insert({
-          friendship_id: `admin_${data.id}`,
-          sender_id: user.id,
-          receiver_id: 'admin',
-          message: `**${category} Request:**\n\n${message.trim()}`,
-          message_type: 'text'
-        });
-
-      if (messageError) console.error('Error creating initial message:', messageError);
+      await supabase.from('admin_messages').insert({
+        report_id: data.id,
+        sender_id: user.id,
+        content: `${category} Request:\n\n${message.trim()}`,
+      });
 
       // Reset form
       setCategory('');
       setMessage('');
       setSubmitted(true);
-    } catch (err) {
-      console.error('Error submitting feedback:', err);
+    } catch {
       alert('Failed to submit feedback. Please try again.');
     } finally {
       setSubmitting(false);
@@ -311,22 +303,12 @@ export default function FeedbackPage({ onBack, onNavigate, currentPage }: Feedba
         </div>
       </div>
 
-      {/* Admin Chat Modal */}
       {adminChatOpen && selectedTicket && (
-        <ChatModal
-          friendshipId={`admin_${selectedTicket.id}`}
-          otherUser={{
-            id: 'admin',
-            user_number: 0,
-            username: 'Admin',
-            owned: [],
-            favourites: [],
-            wishlist: []
-          }}
-          onClose={() => {
-            setAdminChatOpen(false);
-            setSelectedTicket(null);
-          }}
+        <AdminChatModal
+          ticketId={selectedTicket.id}
+          ticketCategory={selectedTicket.category}
+          otherLabel="Admin"
+          onClose={() => { setAdminChatOpen(false); setSelectedTicket(null); }}
         />
       )}
     </div>

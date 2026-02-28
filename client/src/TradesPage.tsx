@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth, supabase } from './AuthContext';
 import { VILLAGERS_DATA, SPECIES_ICONS, getDefaultVillagerData } from './villagerData.js';
+import { encryptMessage as aesEncrypt, decryptMessage as aesDecrypt } from './crypto';
 import TradesSidebar from './TradesSidebar';
 import MobileNav from './MobileNav';
 
@@ -105,7 +106,6 @@ export default function TradesPage({ onBack, onNavigate, currentPage }: TradesPa
     loadTrades();
 
     // Real-time subscription for trade updates
-    console.log('Setting up real-time subscription for user:', user.id);
     const tradeSubscription = supabase
       .channel('trade_updates')
       .on('postgres_changes', 
@@ -115,34 +115,17 @@ export default function TradesPage({ onBack, onNavigate, currentPage }: TradesPa
           table: 'trade_requests'
         }, 
         (payload: any) => {
-          console.log('Trade update received:', payload);
           const newRecord = payload.new as any;
           const oldRecord = payload.old as any;
-          
-          console.log('Is this update relevant?', {
-            requester: newRecord?.requester_id,
-            acceptor: newRecord?.acceptor_id,
-            oldRequester: oldRecord?.requester_id,
-            oldAcceptor: oldRecord?.acceptor_id,
-            userId: user.id
-          });
-          
-          // Check if this update affects the current user
           const affectsUser = 
             newRecord?.requester_id === user.id || 
             newRecord?.acceptor_id === user.id ||
             oldRecord?.requester_id === user.id || 
             oldRecord?.acceptor_id === user.id;
-            
-          if (affectsUser) {
-            console.log('Update affects current user, refreshing trades');
-            loadTrades(); // Refresh trades when any change happens
-          }
+          if (affectsUser) { loadTrades(); }
         }
       )
-      .subscribe((status) => {
-        console.log('Subscription status:', status);
-      });
+      .subscribe();
 
     return () => {
       tradeSubscription.unsubscribe();
@@ -190,8 +173,6 @@ export default function TradesPage({ onBack, onNavigate, currentPage }: TradesPa
         .order('created_at', { ascending: false }),
     ]);
 
-    if (ongoingRes.error) console.error('loadTrades ongoing (or):', ongoingRes.error.message);
-    if (ongoingReqRes.error) console.error('loadTrades ongoing (req):', ongoingReqRes.error.message);
 
     // Merge both ongoing queries, deduplicate by id
     const ongoingMerged = Object.values(
@@ -227,14 +208,6 @@ export default function TradesPage({ onBack, onNavigate, currentPage }: TradesPa
       acceptor_username: r.acceptor_id ? userMap[r.acceptor_id]?.username : undefined,
     });
 
-    if (incomingRes.error) console.error('loadTrades incoming:', incomingRes.error.message);
-    if (myRes.error) console.error('loadTrades my:', myRes.error.message);
-    if (historyRes.error) console.error('loadTrades history:', historyRes.error.message);
-
-    console.log('Incoming trades:', incomingRes.data);
-    console.log('My requests (outgoing):', myRes.data);
-    console.log('Ongoing trades:', ongoingMerged);
-    console.log('History trades:', historyRes.data);
     
     setIncoming((incomingRes.data || []).map(mapU));
     setMyRequests(myRes.data || []);
@@ -245,36 +218,22 @@ export default function TradesPage({ onBack, onNavigate, currentPage }: TradesPa
 
   const handleAccept = async (trade: TradeRequest) => {
     if (trade.requester_id === user?.id) return; // prevent self-acceptance
-    console.log('Accepting trade:', trade.id);
     setAccepting(trade.id);
-    
-    const updateData = { status: 'ongoing', acceptor_id: user?.id, trade_step: 1 };
-    console.log('Updating trade with:', updateData);
-    
-    const { data, error } = await supabase
+    await supabase
       .from('trade_requests')
-      .update(updateData)
-      .eq('id', trade.id)
-      .select();
-      
-    console.log('Accept result:', { data, error });
-    
+      .update({ status: 'ongoing', acceptor_id: user?.id, trade_step: 1 })
+      .eq('id', trade.id);
     await loadTrades();
     setAccepting(null);
-    if (!error) setTab('ongoing');
+    setTab('ongoing');
   };
 
   const handleStepUpdate = async (trade: TradeRequest, patch: Record<string, any>) => {
-    console.log('Updating trade step:', trade.id, 'with patch:', patch);
     setBusy(trade.id);
-    
-    const { data, error } = await supabase
+    await supabase
       .from('trade_requests')
       .update(patch)
-      .eq('id', trade.id)
-      .select();
-      
-    console.log('Step update result:', { data, error });
+      .eq('id', trade.id);
     
     await loadTrades();
     setBusy(null);
@@ -494,10 +453,7 @@ export default function TradesPage({ onBack, onNavigate, currentPage }: TradesPa
               table: 'messages',
               filter: `conversation_id=eq.${conversationId}`
             },
-            (payload) => {
-              console.log('New message received:', payload);
-              loadChatMessages(); // Reload messages when new one arrives
-            }
+            () => { loadChatMessages(); }
           )
           .subscribe();
 
@@ -507,90 +463,38 @@ export default function TradesPage({ onBack, onNavigate, currentPage }: TradesPa
       }
     }, [expanded, conversationId, user]);
 
-    // Simple encryption/decryption (for demo - replace with proper encryption in production)
-    const encryptMessage = (text: string): { encrypted: string; iv: string } => {
-      return {
-        encrypted: btoa(text), // Simple base64 encoding for demo
-        iv: 'demo_iv'
-      };
-    };
-
-    const decryptMessage = (encrypted: string): string => {
-      try {
-        console.log('Decrypting:', encrypted);
-        
-        // Handle potential URL-safe base64
-        let base64String = encrypted;
-        // Replace URL-safe characters if present
-        base64String = base64String.replace(/-/g, '+').replace(/_/g, '/');
-        
-        // Pad with proper padding if needed
-        while (base64String.length % 4 !== 0) {
-          base64String += '=';
-        }
-        
-        const decrypted = atob(base64String);
-        console.log('Decrypted to:', decrypted);
-        return decrypted;
-      } catch (error) {
-        console.error('Decryption failed:', error);
-        return encrypted; // Return as-is if decoding fails
-      }
-    };
-
     const loadChatMessages = async () => {
-      if (!conversationId || !user) return;
-      
+      if (!conversationId || !user || !otherUserId) return;
       setLoadingMessages(true);
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('messages')
-        .select('*')
+        .select('id,sender_id,content_enc,iv,created_at')
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true });
-
-      if (error) {
-        console.error('Error loading messages:', error);
-      } else if (data) {
-        console.log('Raw messages from DB:', data);
-        setChatMessages(data.map(msg => {
-          console.log('Processing message:', msg);
-          return {
-            id: msg.id,
-            sender_id: msg.sender_id,
-            content: decryptMessage(msg.content_enc), // Decrypt the message
-            created_at: msg.created_at
-          };
-        }));
+      if (data) {
+        const msgs = await Promise.all(data.map(async (msg: any) => ({
+          id: msg.id,
+          sender_id: msg.sender_id,
+          content: await aesDecrypt(msg.content_enc, msg.iv, user.id, otherUserId),
+          created_at: msg.created_at,
+        })));
+        setChatMessages(msgs);
       }
       setLoadingMessages(false);
     };
 
     const sendMessage = async () => {
       if (!chatMessage.trim() || !conversationId || !user || !otherUserId) return;
-
-      const originalMessage = chatMessage.trim();
-      const { encrypted, iv } = encryptMessage(originalMessage);
-
-      console.log('Sending message:', {
-        original: originalMessage,
-        encrypted: encrypted,
-        iv: iv
-      });
-
-      const { error, data } = await supabase.from('messages').insert({
+      const text = chatMessage.trim();
+      setChatMessage('');
+      const { content_enc, iv } = await aesEncrypt(text, user.id, otherUserId);
+      await supabase.from('messages').insert({
         conversation_id: conversationId,
         sender_id: user.id,
         receiver_id: otherUserId,
-        content_enc: encrypted,
-        iv: iv,
-      }).select();
-
-      if (error) {
-        console.error('Error sending message:', error);
-      } else {
-        console.log('Message stored successfully:', data);
-        setChatMessage('');
-      }
+        content_enc,
+        iv,
+      });
     };
 
     // Simple incoming trades - no expand, just accept/reject
@@ -1017,7 +921,6 @@ function OngoingCard({ trade, user, busy, dodoInputs, setDodoInputs, handleStepU
   const isTraderByOwned = !trade.acceptor_id && user?.owned?.includes(trade.villager_name);
   const isTrader = trade.acceptor_id === user?.id || isTraderByOwned;
   const isTradee = trade.requester_id === user?.id && !isTrader;
-  console.log('[OngoingCard]', trade.villager_name, { acceptor_id: trade.acceptor_id, requester_id: trade.requester_id, userId: user?.id, isTrader, isTradee });
   const currentStep = trade.trade_step || 1;
   const data = VILLAGERS_DATA[trade.villager_name as keyof typeof VILLAGERS_DATA] || getDefaultVillagerData(trade.villager_name);
   const icon = SPECIES_ICONS[data.species as keyof typeof SPECIES_ICONS] || '🏘️';
@@ -1050,10 +953,7 @@ function OngoingCard({ trade, user, busy, dodoInputs, setDodoInputs, handleStepU
             table: 'messages',
             filter: `conversation_id=eq.${conversationId}`
           },
-          (payload: any) => {
-            console.log('New message received in ongoing trade:', payload);
-            loadChatMessages();
-          }
+          () => { loadChatMessages(); }
         )
         .subscribe();
 
@@ -1063,79 +963,38 @@ function OngoingCard({ trade, user, busy, dodoInputs, setDodoInputs, handleStepU
     }
   }, [showChat, conversationId, user]);
 
-  // Simple encryption/decryption (for demo - replace with proper encryption in production)
-  const encryptMessage = (text: string): { encrypted: string; iv: string } => {
-    // For now, just return the text as-is (proper encryption would use Web Crypto API)
-    return {
-      encrypted: btoa(text), // Simple base64 encoding for demo
-      iv: 'demo_iv'
-    };
-  };
-
-  const decryptMessage = (encrypted: string): string => {
-    try {
-      console.log('OngoingCard - Decrypting:', encrypted);
-      
-      // Handle potential URL-safe base64
-      let base64String = encrypted;
-      // Replace URL-safe characters if present
-      base64String = base64String.replace(/-/g, '+').replace(/_/g, '/');
-      
-      // Pad with proper padding if needed
-      while (base64String.length % 4 !== 0) {
-        base64String += '=';
-      }
-      
-      const decrypted = atob(base64String);
-      console.log('OngoingCard - Decrypted to:', decrypted);
-      return decrypted;
-    } catch (error) {
-      console.error('OngoingCard - Decryption failed:', error);
-      return encrypted; // Return as-is if decoding fails
-    }
-  };
-
   const loadChatMessages = async () => {
-    if (!conversationId || !user) return;
-    
+    if (!conversationId || !user || !otherUserId) return;
     setLoadingMessages(true);
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('messages')
-      .select('*')
+      .select('id,sender_id,content_enc,iv,created_at')
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: true });
-
-    if (error) {
-      console.error('Error loading messages:', error);
-    } else if (data) {
-      setChatMessages(data.map(msg => ({
+    if (data) {
+      const msgs = await Promise.all(data.map(async (msg: any) => ({
         id: msg.id,
         sender_id: msg.sender_id,
-        content: decryptMessage(msg.content_enc), // Decrypt the message
-        created_at: msg.created_at
+        content: await aesDecrypt(msg.content_enc, msg.iv, user.id, otherUserId),
+        created_at: msg.created_at,
       })));
+      setChatMessages(msgs);
     }
     setLoadingMessages(false);
   };
 
   const sendMessage = async () => {
     if (!chatMessage.trim() || !conversationId || !user || !otherUserId) return;
-
-    const { encrypted, iv } = encryptMessage(chatMessage.trim());
-
-    const { error } = await supabase.from('messages').insert({
+    const text = chatMessage.trim();
+    setChatMessage('');
+    const { content_enc, iv } = await aesEncrypt(text, user.id, otherUserId);
+    await supabase.from('messages').insert({
       conversation_id: conversationId,
       sender_id: user.id,
       receiver_id: otherUserId,
-      content_enc: encrypted,
-      iv: iv,
+      content_enc,
+      iv,
     });
-
-    if (error) {
-      console.error('Error sending message:', error);
-    } else {
-      setChatMessage('');
-    }
   };
 
   // Time tracking

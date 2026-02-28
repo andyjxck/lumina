@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth, supabase } from './AuthContext';
 import MobileNav from './MobileNav';
-import ChatModal from './ChatModal';
+import AdminChatModal from './AdminChatModal';
 
 type Page = 'shop' | 'profile' | 'login' | 'orders' | 'admin' | 'feedback';
 type AdminTab = 'reports' | 'help' | 'feedback' | 'users' | 'modlogs';
@@ -549,15 +549,12 @@ export default function AdminPage({ onBack, onNavigate, currentPage }: AdminPage
     </div>
     </div>
 
-    {/* Chat modal for Help/Feedback tickets */}
     {chatTicket && (
-      <ChatModal
-        friendshipId={`admin_${chatTicket.id}`}
-        otherUser={isFullAdmin
-          ? { id: chatTicket.user_id, user_number: chatTicket.user_number||0, username: chatTicket.username||'User', owned:[], favourites:[], wishlist:[] }
-          : ADMIN_USER
-        }
-        onClose={()=>setChatTicket(null)}
+      <AdminChatModal
+        ticketId={chatTicket.id}
+        ticketCategory={chatTicket.category}
+        otherLabel={isFullAdmin ? (chatTicket.username || `#${chatTicket.user_number}`) : 'Admin'}
+        onClose={() => setChatTicket(null)}
       />
     )}
 

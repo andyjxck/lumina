@@ -70,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (identifier: string, secret: string): Promise<string | null> => {
     const { data, error } = await supabase
       .from('ac_users')
-      .select('*')
+      .select('id,user_number,username,secret_hash,secret_type,owned,favourites,wishlist,verified_cards,bio,island_name,avg_rating,rating_count,trade_restricted')
       .or(`username.eq.${identifier},user_number.eq.${parseInt(identifier) || -1}`)
       .single();
 

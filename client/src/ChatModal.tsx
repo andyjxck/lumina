@@ -247,6 +247,7 @@ export default function ChatModal({ friendshipId, otherUser, onClose }: ChatModa
             className="chat-input"
             placeholder="Message…"
             value={input}
+            maxLength={500}
             onChange={e => { setInput(e.target.value); handleTyping(); }}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
             disabled={sending}

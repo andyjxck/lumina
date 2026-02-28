@@ -494,20 +494,23 @@ export default function VillagerGrid({
               }
             }}
             style={{
-              minWidth: '24px',
+              minWidth: '0',
+              flex: '1',
               height: '24px',
               border: 'none',
-              background: currentLetter === letter ? 'rgba(99,102,241,0.5)' : 'transparent',
-              color: 'white',
+              borderBottom: currentLetter === letter ? '2px solid white' : '2px solid transparent',
+              background: 'transparent',
+              color: currentLetter === letter ? 'white' : 'rgba(255,255,255,0.45)',
               borderRadius: '0',
-              fontSize: '12px',
-              fontWeight: '600',
-              cursor: groupedVillagers[letter] ? 'pointer' : 'not-allowed',
+              fontSize: '11px',
+              fontWeight: currentLetter === letter ? '700' : '400',
+              cursor: groupedVillagers[letter] ? 'pointer' : 'default',
               transition: 'all 0.2s ease',
-              flexShrink: 0,
+              flexShrink: 1,
               padding: '0',
               margin: '0',
-              opacity: groupedVillagers[letter] ? '1' : '0.3'
+              opacity: groupedVillagers[letter] ? '1' : '0.25',
+              textAlign: 'center'
             }}
           >
             {letter}

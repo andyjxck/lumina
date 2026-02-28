@@ -176,21 +176,21 @@ export default function TradesSidebar({ tab, incoming, myRequests, ongoingTrades
 
       {/* Nav footer */}
       <div className="sidebar-nav">
-        <button className={`sidebar-nav-item ${currentPage === 'shop' ? 'active' : ''}`} onClick={() => onNavigate('shop')} title="Marketplace">
+        <button className={`sidebar-nav-item ${currentPage === 'shop' ? 'active' : ''}`} onClick={() => onNavigate('shop')} title="Market">
           <span className="nav-item-icon">🛒</span>
-          <span className="nav-item-label">Marketplace</span>
+          <span className="nav-item-label">Market</span>
         </button>
         <button className={`sidebar-nav-item ${currentPage === 'orders' ? 'active' : ''}`} onClick={() => onNavigate('orders')} title="Trades">
           <span className="nav-item-icon">⇄</span>
           <span className="nav-item-label">Trades</span>
         </button>
-        <button className={`sidebar-nav-item ${currentPage === 'feedback' ? 'active' : ''}`} onClick={() => onNavigate('feedback')} title="Help">
-          <span className="nav-item-icon">💬</span>
-          <span className="nav-item-label">Help</span>
-        </button>
         <button className={`sidebar-nav-item ${currentPage === 'profile' ? 'active' : ''}`} onClick={() => onNavigate('profile')} title="Profile">
           <span className="nav-item-icon">👤</span>
           <span className="nav-item-label">{user?.username || (user ? `#${user.user_number}` : 'Profile')}</span>
+        </button>
+        <button className={`sidebar-nav-item ${currentPage === 'feedback' ? 'active' : ''}`} onClick={() => onNavigate('feedback')} title="Feedback">
+          <span className="nav-item-icon">💬</span>
+          <span className="nav-item-label">Feedback</span>
         </button>
         <button className={`sidebar-nav-item ${currentPage === 'admin' ? 'active' : ''}`} onClick={() => onNavigate('admin')} title="Admin">
             <span className="nav-item-icon">⚠</span>

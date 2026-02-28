@@ -423,15 +423,15 @@ export default function ProfileSidebar({ onOpenChat, onNavigate, currentPage }: 
 
       {/* ── NAV (pinned at bottom, never scrolls) ── */}
       <div className="sidebar-nav">
-        <NavItem icon="🛒" label="Marketplace" active={currentPage === 'shop'} onClick={() => onNavigate('shop')} />
+        <NavItem icon="🛒" label="Market" active={currentPage === 'shop'} onClick={() => onNavigate('shop')} />
         <NavItem icon="⇄" label="Trades" active={currentPage === 'orders'} onClick={() => onNavigate('orders')} />
-        <NavItem icon="💬" label="Help" active={currentPage === 'feedback'} onClick={() => onNavigate('feedback')} />
         <NavItem
           icon="👤"
           label={user.username || `#${user.user_number}`}
           active={currentPage === 'profile'}
           onClick={() => onNavigate('profile')}
         />
+        <NavItem icon="💬" label="Feedback" active={currentPage === 'feedback'} onClick={() => onNavigate('feedback')} />
         <NavItem icon="⚠" label="Admin" active={currentPage === 'admin'} onClick={() => onNavigate('admin')} />
       </div>
     </div>

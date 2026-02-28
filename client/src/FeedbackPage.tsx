@@ -166,11 +166,11 @@ export default function FeedbackPage({ onBack, onNavigate, currentPage }: Feedba
           <span className="nav-item-label">Trades</span>
         </button>
         <button className="sidebar-nav-item" onClick={() => onNavigate('profile')} title="Profile">
-          <span className="nav-item-icon">�</span>
+          <span className="nav-item-icon">👤</span>
           <span className="nav-item-label">{user?.username || (user ? `#${user.user_number}` : 'Profile')}</span>
         </button>
         <button className={`sidebar-nav-item active`} onClick={() => onNavigate('feedback')} title="Help Centre">
-          <span className="nav-item-icon">�</span>
+          <span className="nav-item-icon">💬</span>
           <span className="nav-item-label">Feedback</span>
         </button>
         <button className="sidebar-nav-item" onClick={() => onNavigate('admin')} title="Admin">

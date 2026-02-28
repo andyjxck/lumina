@@ -8420,6 +8420,14 @@ body::before {
     font-size: 10px !important;
     white-space: nowrap !important;
   }
+  .psb-sidebar .nav-item-icon,
+  .tsb-sidebar .nav-item-icon,
+  .sidebar-shell .nav-item-icon {
+    font-size: 18px !important;
+    line-height: 1 !important;
+    filter: grayscale(1) brightness(10) !important;
+    opacity: 0.6 !important;
+  }
 
   /* Card action buttons always visible — touch devices can't hover */
   .card-top-actions,
@@ -8568,6 +8576,7 @@ body::before {
   }
   .fb-sidebar .sidebar-nav-item { flex-direction: column !important; align-items: center !important; text-align: center !important; }
   .fb-sidebar .nav-item-label { opacity: 1 !important; font-size: 10px !important; }
+  .fb-sidebar .nav-item-icon { font-size: 18px !important; line-height: 1 !important; filter: grayscale(1) brightness(10) !important; opacity: 0.6 !important; }
 }
 
 /* ===== MOBILE FAVOURITES STRIP ===== */

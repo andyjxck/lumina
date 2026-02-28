@@ -230,15 +230,15 @@ export default function Sidebar({
 
           {/* Nav footer — always at bottom, outside scroll area */}
           <div className="sidebar-nav">
-            <NavItem icon="🛒" label="Marketplace" active={currentPage === 'shop'} onClick={() => onNavigate('shop')} />
+            <NavItem icon="🛒" label="Market" active={currentPage === 'shop'} onClick={() => onNavigate('shop')} />
             <NavItem icon="⇄" label="Trades" active={currentPage === 'orders'} onClick={() => onNavigate('orders')} />
-            <NavItem icon="💬" label="Help" active={currentPage === 'feedback'} onClick={() => onNavigate('feedback')} />
             <NavItem
               icon="👤"
               label={user ? (user.username || `#${user.user_number}`) : 'Log In'}
               active={currentPage === 'profile' || currentPage === 'login'}
               onClick={() => onNavigate(user ? 'profile' : 'login')}
             />
+            <NavItem icon="💬" label="Feedback" active={currentPage === 'feedback'} onClick={() => onNavigate('feedback')} />
             <NavItem icon="⚠" label="Admin" active={currentPage === 'admin'} onClick={() => onNavigate('admin')} />
                       </div>
         </div>

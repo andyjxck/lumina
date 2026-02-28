@@ -149,21 +149,21 @@ export default function AdminPage({ onBack, onNavigate, currentPage }: AdminPage
         </div>
       </div>
       <div className="sidebar-nav">
-        <button className={`sidebar-nav-item ${page === 'shop' ? 'active' : ''}`} onClick={() => navigate('shop')} title="Marketplace">
+        <button className={`sidebar-nav-item ${page === 'shop' ? 'active' : ''}`} onClick={() => navigate('shop')} title="Market">
           <span className="nav-item-icon">🛒</span>
-          <span className="nav-item-label">Marketplace</span>
+          <span className="nav-item-label">Market</span>
         </button>
         <button className={`sidebar-nav-item ${page === 'orders' ? 'active' : ''}`} onClick={() => navigate('orders')} title="Trades">
           <span className="nav-item-icon">⇄</span>
           <span className="nav-item-label">Trades</span>
         </button>
-        <button className={`sidebar-nav-item ${page === 'feedback' ? 'active' : ''}`} onClick={() => navigate('feedback')} title="Help Centre">
-          <span className="nav-item-icon">💬</span>
-          <span className="nav-item-label">Help Centre</span>
-        </button>
         <button className={`sidebar-nav-item ${page === 'profile' ? 'active' : ''}`} onClick={() => navigate('profile')} title="Profile">
           <span className="nav-item-icon">👤</span>
           <span className="nav-item-label">{user?.username || (user ? `#${user.user_number}` : 'Profile')}</span>
+        </button>
+        <button className={`sidebar-nav-item ${page === 'feedback' ? 'active' : ''}`} onClick={() => navigate('feedback')} title="Feedback">
+          <span className="nav-item-icon">💬</span>
+          <span className="nav-item-label">Feedback</span>
         </button>
         <button className={`sidebar-nav-item ${page === 'admin' ? 'active' : ''}`} onClick={() => navigate('admin')} title="Admin">
           <span className="nav-item-icon">⚠</span>

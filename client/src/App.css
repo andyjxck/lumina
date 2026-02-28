@@ -7880,6 +7880,12 @@ body::before {
     display: none !important;
   }
 
+  /* Hide prev/next arrows inside the alphabet nav bar */
+  .villager-grid-horizontal .alphabet-nav-top button:first-child,
+  .villager-grid-horizontal .alphabet-nav-top button:last-child {
+    display: none !important;
+  }
+
   /* Compact podium on mobile */
   .villager-grid-horizontal > div:first-child {
     margin-bottom: 12px !important;
@@ -8020,15 +8026,7 @@ body::before {
   }
 
   .letter-header-horizontal {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    margin-bottom: 25px !important;
-    padding: 20px 25px !important;
-    background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.2)) !important;
-    border-radius: 16px !important;
-    border: 1px solid rgba(99,102,241,0.3) !important;
-    backdrop-filter: blur(10px) !important;
+    display: none !important;
   }
 
   .letter-header-horizontal h2 {

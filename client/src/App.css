@@ -5749,24 +5749,31 @@ body::before {
 /* ── Tabs ── */
 .admin-tabs {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   margin-bottom: 20px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
 }
+.admin-tabs::-webkit-scrollbar { display: none; }
 .admin-tab {
   background: rgba(255,255,255,0.05);
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: 8px;
   color: rgba(255,255,255,0.5);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  padding: 7px 14px;
+  padding: 6px 10px;
   cursor: pointer;
   font-family: inherit;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .admin-tab:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.75); }
 .admin-tab.active {

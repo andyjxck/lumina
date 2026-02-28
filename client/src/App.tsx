@@ -206,7 +206,7 @@ function ShopInner() {
   if (page === 'login') return <LoginPage onLogin={() => setPage('shop')} onBack={() => setPage('shop')} />;
   if (page === 'profile') return <ProfilePage onBack={() => { setPage('shop'); setViewingUserId(undefined); }} onNavigate={(newPage, userId) => { setPage(newPage); setViewingUserId(userId); }} currentPage={page} viewingUserId={viewingUserId} />;
   if (page === 'orders') return <TradesPage onBack={() => setPage('shop')} onNavigate={setPage} currentPage={page} />;
-  if (page === 'admin') return <AdminPage onBack={() => setPage('shop')} onNavigate={setPage} currentPage={page} />;
+  if (page === 'admin') return <AdminPage onBack={() => setPage('shop')} onNavigate={(newPage, userId) => { setPage(newPage); if (userId) setViewingUserId(userId); }} currentPage={page} />;
   if (page === 'feedback') return <FeedbackPage onBack={() => setPage('shop')} onNavigate={setPage} currentPage={page} />;
 
   return (

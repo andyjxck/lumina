@@ -8,6 +8,7 @@ interface ProfileSidebarProps {
   onOpenChat: (friendshipId: string, otherUser: OtherUser) => void;
   onNavigate: (page: Page, userId?: string) => void;
   currentPage: Page;
+  mobileInline?: boolean;
 }
 
 export interface OtherUser {
@@ -47,7 +48,7 @@ const NavItem = ({ icon, label, active, onClick }: { icon: string; label: string
   </button>
 );
 
-export default function ProfileSidebar({ onOpenChat, onNavigate, currentPage }: ProfileSidebarProps) {
+export default function ProfileSidebar({ onOpenChat, onNavigate, currentPage, mobileInline }: ProfileSidebarProps) {
   const { user } = useAuth();
   const [searchQ, setSearchQ] = useState('');
   const [searchResults, setSearchResults] = useState<OtherUser[]>([]);
@@ -278,18 +279,8 @@ export default function ProfileSidebar({ onOpenChat, onNavigate, currentPage }: 
   
   if (!user) return null;
 
-  return (
-    <div className="psb-sidebar">
-      {/* Scrollable content */}
-      <div className="psb-sidebar-inner">
-
-        <>
-            {/* Logo */}
-            <div className="sidebar-logo-header">
-              <img src="/logo192.png" alt="Dreamie Store" className="sidebar-logo-img" />
-              <button className="tutorial-trigger-btn" title="Tutorial">?</button>
-            </div>
-            
+  const innerContent = (
+    <>
             {/* ── SEARCH BAR (always at top, like shop) ── */}
             <div className="sidebar-search-wrap">
               <div className="sidebar-search-bare">
@@ -417,8 +408,21 @@ export default function ProfileSidebar({ onOpenChat, onNavigate, currentPage }: 
                 {leaderTab === 'trades' ? 'Total completed trades' : 'Unique villagers given in trades'}
               </div>
             </div>
-          </>
-        )
+    </>
+  );
+
+  if (mobileInline) {
+    return <div className="psb-mobile-inline">{innerContent}</div>;
+  }
+
+  return (
+    <div className="psb-sidebar">
+      <div className="psb-sidebar-inner">
+        <div className="sidebar-logo-header">
+          <img src="/logo192.png" alt="Dreamie Store" className="sidebar-logo-img" />
+          <button className="tutorial-trigger-btn" title="Tutorial">?</button>
+        </div>
+        {innerContent}
       </div>
 
       {/* ── NAV (pinned at bottom, never scrolls) ── */}

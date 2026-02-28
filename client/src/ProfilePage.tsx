@@ -360,6 +360,11 @@ export default function ProfilePage({ onBack, onNavigate, currentPage, viewingUs
       )}
     </div>
 
+      {/* Mobile inline — shows sidebar content in main area on mobile */}
+      <div className="psb-mobile-panel">
+        <ProfileSidebar mobileInline onOpenChat={(fId, other) => setChat({ friendshipId: fId, otherUser: other })} onNavigate={onNavigate} currentPage={currentPage} />
+      </div>
+
       <ProfileSidebar onOpenChat={(fId, other) => setChat({ friendshipId: fId, otherUser: other })} onNavigate={onNavigate} currentPage={currentPage} />
     </div>
 

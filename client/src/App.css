@@ -2620,6 +2620,7 @@ body::before {
   min-height: 100vh;
   padding: 72px 28px 60px 310px;
   max-width: 1200px;
+  background: linear-gradient(160deg, #0f1108 0%, #181a06 40%, #12140a 100%);
 }
 .profile-page.profile-page--chat {
   position: fixed;
@@ -2844,6 +2845,15 @@ body::before {
 }
 .pro-username-save:hover { border-color: #4ade80; color: #4ade80; }
 .pro-username-cancel:hover { border-color: #f87171; color: #f87171; }
+
+/* Mobile inline profile sidebar panel — hidden on desktop */
+.psb-mobile-panel { display: none; }
+.psb-mobile-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 0;
+}
 
 /* Bio / Island name */
 .pro-meta-col {
@@ -8536,6 +8546,9 @@ body::before {
   .pro-hero            { display: none !important; }
   .admin-header        { display: none !important; }
   .feedback-header     { display: none !important; }
+
+  /* Show inline profile sidebar panel on mobile */
+  .psb-mobile-panel    { display: block !important; }
 
   /* ── Gold user ID pill — top-right of each page ── */
   .mobile-user-pill {

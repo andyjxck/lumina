@@ -32,6 +32,7 @@ export default function VillagerGrid({
   const [currentLetter, setCurrentLetter] = React.useState('A');
   const [mostTraded, setMostTraded] = React.useState<string[]>([]);
   const [featuredExpandedCard, setFeaturedExpandedCard] = React.useState<string | null>(null);
+  const swipeStartX = React.useRef<number | null>(null);
 
   // Reusable villager card component
   const VillagerCard = ({ 
@@ -280,25 +281,18 @@ export default function VillagerGrid({
   };
 
   // Swipe handlers
-  const handleSwipeStart = (e: React.TouchEvent | React.MouseEvent) => {
-    const touch = 'touches' in e ? e.touches[0] : e;
-    const startX = touch.clientX;
-    
-    const handleSwipeEnd = (e: React.TouchEvent | React.MouseEvent) => {
-      const touch = 'changedTouches' in e ? e.changedTouches[0] : e;
-      const endX = touch.clientX;
-      const diff = startX - endX;
-      
-      if (Math.abs(diff) > 50) { // Minimum swipe distance
-        if (diff > 0) {
-          goToNextLetter(); // Swipe left = next
-        } else {
-          goToPreviousLetter(); // Swipe right = previous
-        }
-      }
-    };
-    
-    return handleSwipeEnd;
+  const handleTouchStart = (e: React.TouchEvent) => {
+    swipeStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (swipeStartX.current === null) return;
+    const diff = swipeStartX.current - e.changedTouches[0].clientX;
+    swipeStartX.current = null;
+    if (Math.abs(diff) > 50) {
+      if (diff > 0) goToNextLetter();
+      else goToPreviousLetter();
+    }
   };
 
   // Group villagers by first letter
@@ -323,6 +317,7 @@ export default function VillagerGrid({
       {/* Screen Edge Navigation Arrows */}
       {alphabet.indexOf(currentLetter) > 0 && (
         <button
+          className="letter-nav-arrow letter-nav-arrow-left"
           onClick={goToPreviousLetter}
           style={{
             position: 'fixed',
@@ -351,6 +346,7 @@ export default function VillagerGrid({
       )}
 
       <button
+        className="letter-nav-arrow letter-nav-arrow-right"
         onClick={goToNextLetter}
         disabled={alphabet.indexOf(currentLetter) >= alphabet.length - 1}
         style={{
@@ -544,10 +540,8 @@ export default function VillagerGrid({
         {/* Current letter section with swipe */}
         <div 
           className="current-letter-section"
-          onTouchStart={handleSwipeStart}
-          onTouchEnd={handleSwipeStart}
-          onMouseDown={handleSwipeStart}
-          onMouseUp={handleSwipeStart}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
         >
           {(() => {
             const letterVillagers = groupedVillagers[currentLetter];

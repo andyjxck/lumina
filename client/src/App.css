@@ -8166,20 +8166,20 @@ body::before {
   }
 
   .mobnav-filter-chip {
-    padding: 6px 12px !important;
-    background: rgba(255,255,255,0.08) !important;
-    border: 1px solid rgba(255,255,255,0.12) !important;
-    border-radius: 8px !important;
-    color: rgba(255,255,255,0.7) !important;
+    padding: 2px 0 !important;
+    background: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    color: rgba(255,255,255,0.35) !important;
     font-size: 14px !important;
     cursor: pointer !important;
-    transition: all 0.2s ease !important;
+    transition: color 0.15s ease !important;
+    font-family: inherit !important;
   }
 
   .mobnav-filter-chip.active {
-    background: rgba(167,139,250,0.2) !important;
-    border-color: rgba(167,139,250,0.4) !important;
-    color: #c4b5fd !important;
+    color: rgba(255,255,255,0.95) !important;
+    font-weight: 600 !important;
   }
 
   .mobnav-clear-filters {

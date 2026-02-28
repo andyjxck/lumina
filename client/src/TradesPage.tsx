@@ -808,7 +808,7 @@ export default function TradesPage({ onBack, onNavigate, currentPage }: TradesPa
   };
   const tabLabels: Record<string, string> = {
     incoming: 'Incoming',
-    my: 'My Requests',
+    my: 'Outgoing',
     ongoing: 'Ongoing',
     history: 'History',
   };

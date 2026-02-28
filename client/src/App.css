@@ -2618,15 +2618,16 @@ body::before {
 /* ===== PROFILE PAGE (new pro-* classes) ===== */
 .profile-page {
   min-height: 100vh;
-  padding: 72px 28px 60px 310px;
+  padding: 72px 28px 60px 28px;
+  margin-left: 290px;
   background: linear-gradient(160deg, #0f1108 0%, #181a06 40%, #12140a 100%);
 }
 @media (max-width: 768px) {
   .profile-page {
-    padding: 72px 16px 24px 16px !important;
-    max-width: 100vw !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
+    margin-left: 0;
+    padding: 72px 16px 24px 16px;
+    width: 100%;
+    box-sizing: border-box;
   }
 }
 .profile-page.profile-page--chat {
@@ -3992,15 +3993,16 @@ body::before {
 /* ===== TRADES PAGE (tr-* classes) ===== */
 .trades-page {
   min-height: 100vh;
-  padding: 72px 28px 60px 310px;
+  padding: 72px 28px 60px 28px;
+  margin-left: 290px;
   background: linear-gradient(160deg, #0f1108 0%, #181a06 40%, #12140a 100%);
 }
 @media (max-width: 768px) {
   .trades-page {
-    padding: 72px 16px 24px 16px !important;
-    max-width: 100vw !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
+    margin-left: 0;
+    padding: 72px 16px 24px 16px;
+    width: 100%;
+    box-sizing: border-box;
   }
 }
 
@@ -8340,9 +8342,6 @@ body::before {
   .main-content { padding-top: 64px !important; }
   .profile-page, .trades-page, .admin-page, .feedback-page {
     padding-top: 64px !important;
-    max-width: 100vw !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
   }
 
   /* Prevent anything bleeding outside viewport horizontally */
@@ -8352,8 +8351,6 @@ body::before {
   }
 
   /* Side/bottom padding — fixed values only, no env() */
-  .profile-page,
-  .trades-page,
   .admin-page,
   .feedback-page,
   .main-content {
@@ -8561,9 +8558,19 @@ body::before {
   .card-top-btn.in-cart      { color: rgba(239,68,68,0.9) !important; filter: grayscale(0) opacity(1) !important; }
 
   /* ── Hide page titles / heroes on mobile ── */
-  .pro-hero            { display: none !important; }
   .admin-header        { display: none !important; }
   .feedback-header     { display: none !important; }
+
+  /* Show pro-hero on mobile but stack it vertically */
+  .pro-hero {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+    padding: 16px !important;
+  }
+  .pro-hero-left { gap: 12px !important; }
+  .pro-meta-col { min-width: unset !important; max-width: 100% !important; }
+  .pro-favs-col { width: 100% !important; }
 
   /* Show inline profile sidebar panel on mobile */
   .psb-mobile-panel    { display: block !important; }

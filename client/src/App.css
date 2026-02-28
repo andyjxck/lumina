@@ -2619,7 +2619,6 @@ body::before {
 .profile-page {
   min-height: 100vh;
   padding: 72px 28px 60px 310px;
-  max-width: 1200px;
   background: linear-gradient(160deg, #0f1108 0%, #181a06 40%, #12140a 100%);
 }
 @media (max-width: 768px) {

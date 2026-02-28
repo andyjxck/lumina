@@ -18,7 +18,7 @@ import bgImage from './bg.png';
 type Page = 'shop' | 'profile' | 'login' | 'orders' | 'admin' | 'feedback';
 
 function ShopInner() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [basket, setBasket] = useState<string[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -71,8 +71,8 @@ function ShopInner() {
   }, [page, viewingUserId]);
 
   useEffect(() => {
-    if (!user && page !== 'login') setPage('shop');
-  }, [user, page]);
+    if (!authLoading && !user && page !== 'login') setPage('shop');
+  }, [authLoading, user, page]);
 
   const getFilteredVillagers = () => {
     let filtered = [...VILLAGERS];

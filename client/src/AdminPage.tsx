@@ -168,6 +168,9 @@ export default function AdminPage({ onBack, onNavigate, currentPage }: AdminPage
   const [busy, setBusy] = useState<string | null>(null);
   const [userSearch, setUserSearch] = useState('');
   const [chatTicket, setChatTicket] = useState<FeedbackTicket | null>(null);
+  const [viewingProfileId, setViewingProfileId] = useState<string | null>(null);
+  const [profileData, setProfileData] = useState<any | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
   const closeDrawerRef = useRef<(() => void) | null>(null);
 
   const isFullAdmin = user?.user_number === 0 || user?.user_number === 2;
@@ -276,7 +279,25 @@ export default function AdminPage({ onBack, onNavigate, currentPage }: AdminPage
     return String(u.user_number).includes(q) || (u.username || '').toLowerCase().includes(q);
   });
 
-  const navigate = (page: Page, userId?: string) => { if (onNavigate) onNavigate(page, userId); };
+  const openProfile = useCallback(async (userId: string) => {
+    setViewingProfileId(userId);
+    setProfileLoading(true);
+    const { data } = await supabase
+      .from('ac_users')
+      .select('id,user_number,username,trade_restricted,owned,favourites,wishlist,bio,island_name,avg_rating,rating_count,created_at')
+      .eq('id', userId)
+      .single();
+    setProfileData(data || null);
+    setProfileLoading(false);
+  }, []);
+
+  const navigate = (page: Page, userId?: string) => {
+    if (page === 'profile' && userId) {
+      openProfile(userId);
+    } else if (onNavigate) {
+      onNavigate(page, userId);
+    }
+  };
   const page = currentPage || 'admin';
 
   const TABS: { id: AdminTab; label: string; count?: number }[] = isFullAdmin ? [
@@ -538,6 +559,78 @@ export default function AdminPage({ onBack, onNavigate, currentPage }: AdminPage
         }
         onClose={()=>setChatTicket(null)}
       />
+    )}
+
+    {/* Inline profile panel */}
+    {viewingProfileId && (
+      <div style={{
+        position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.65)',display:'flex',alignItems:'flex-start',justifyContent:'flex-end',
+      }} onClick={()=>{ setViewingProfileId(null); setProfileData(null); }}>
+        <div style={{
+          width:'min(420px,100vw)',height:'100%',background:'linear-gradient(160deg,#0f1108 0%,#181a06 40%,#12140a 100%)',
+          borderLeft:'1px solid rgba(255,255,255,0.1)',overflowY:'auto',padding:'24px 20px',boxSizing:'border-box',
+        }} onClick={e=>e.stopPropagation()}>
+          <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}>
+            <button onClick={()=>{ setViewingProfileId(null); setProfileData(null); }} style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:8,color:'rgba(255,255,255,0.7)',cursor:'pointer',fontFamily:'inherit',fontSize:13,padding:'6px 12px'}}>← Back</button>
+            <span style={{color:'rgba(255,255,255,0.5)',fontSize:13}}>User Profile</span>
+          </div>
+          {profileLoading ? (
+            <div style={{color:'rgba(255,255,255,0.4)',textAlign:'center',paddingTop:40}}>Loading…</div>
+          ) : profileData ? (
+            <>
+              <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:20,padding:'16px',background:'rgba(255,255,255,0.04)',borderRadius:12,border:'1px solid rgba(255,255,255,0.08)'}}>
+                <div style={{width:48,height:48,borderRadius:'50%',background:'rgba(255,255,255,0.08)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>👤</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:800,fontSize:16,color:'white'}}>{profileData.username || `User #${profileData.user_number}`}</div>
+                  <div style={{fontSize:12,color:'rgba(255,255,255,0.4)'}}>#{profileData.user_number}{profileData.island_name ? ` · ${profileData.island_name}` : ''}</div>
+                  {profileData.trade_restricted && <span style={{fontSize:10,fontWeight:700,background:'rgba(239,68,68,0.15)',color:'#f87171',borderRadius:5,padding:'2px 7px',border:'1px solid rgba(239,68,68,0.25)',marginTop:4,display:'inline-block'}}>Restricted</span>}
+                </div>
+                <div style={{display:'flex',gap:5,flexShrink:0}}>
+                  {isFullAdmin && (() => {
+                    const u = users.find(x=>x.id===profileData.id);
+                    return u ? (
+                      <AB label={u.trade_restricted?'Unrestrict':'Restrict'} color={u.trade_restricted?'#22c55e':'#ef4444'} disabled={busy===u.id} onClick={()=>handleToggleRestrict(u)} />
+                    ) : null;
+                  })()}
+                </div>
+              </div>
+              {profileData.bio && (
+                <div style={{marginBottom:16,padding:'12px',background:'rgba(255,255,255,0.03)',borderRadius:10,border:'1px solid rgba(255,255,255,0.07)',color:'rgba(255,255,255,0.7)',fontSize:13,lineHeight:1.5}}>
+                  {profileData.bio}
+                </div>
+              )}
+              <div style={{display:'flex',gap:10,marginBottom:16,flexWrap:'wrap'}}>
+                <div style={{flex:1,minWidth:80,background:'rgba(255,255,255,0.04)',borderRadius:10,border:'1px solid rgba(255,255,255,0.07)',padding:'10px',textAlign:'center'}}>
+                  <div style={{fontSize:18,fontWeight:800,color:'white'}}>{(profileData.owned||[]).length}</div>
+                  <div style={{fontSize:10,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.5px'}}>Owned</div>
+                </div>
+                <div style={{flex:1,minWidth:80,background:'rgba(255,255,255,0.04)',borderRadius:10,border:'1px solid rgba(255,255,255,0.07)',padding:'10px',textAlign:'center'}}>
+                  <div style={{fontSize:18,fontWeight:800,color:'white'}}>{(profileData.favourites||[]).length}</div>
+                  <div style={{fontSize:10,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.5px'}}>Favourites</div>
+                </div>
+                <div style={{flex:1,minWidth:80,background:'rgba(255,255,255,0.04)',borderRadius:10,border:'1px solid rgba(255,255,255,0.07)',padding:'10px',textAlign:'center'}}>
+                  <div style={{fontSize:18,fontWeight:800,color:'white'}}>{profileData.rating_count||0}</div>
+                  <div style={{fontSize:10,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.5px'}}>Ratings</div>
+                </div>
+              </div>
+              {(profileData.owned||[]).length > 0 && (
+                <div style={{marginBottom:12}}>
+                  <div style={{fontSize:10,fontWeight:700,color:'rgba(255,255,255,0.4)',textTransform:'uppercase',letterSpacing:'0.7px',marginBottom:8}}>Villagers Owned</div>
+                  <div style={{display:'flex',flexWrap:'wrap',gap:5}}>
+                    {(profileData.owned||[]).slice(0,40).map((v:string)=>(
+                      <span key={v} style={{background:'rgba(96,165,250,0.1)',border:'1px solid rgba(96,165,250,0.2)',borderRadius:5,padding:'2px 7px',fontSize:11,color:'rgba(255,255,255,0.7)'}}>{v}</span>
+                    ))}
+                    {(profileData.owned||[]).length>40&&<span style={{color:'rgba(255,255,255,0.3)',fontSize:11}}>+{(profileData.owned||[]).length-40} more</span>}
+                  </div>
+                </div>
+              )}
+              <div style={{fontSize:11,color:'rgba(255,255,255,0.25)',marginTop:8}}>Joined {new Date(profileData.created_at).toLocaleDateString()}</div>
+            </>
+          ) : (
+            <div style={{color:'rgba(255,255,255,0.4)',textAlign:'center',paddingTop:40}}>User not found</div>
+          )}
+        </div>
+      </div>
     )}
     </>
   );

@@ -35,39 +35,48 @@ function ShopInner() {
   const [openFilter, setOpenFilter] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
-  const [page, setPage] = useState<Page>('shop');
-  const [viewingUserId, setViewingUserId] = useState<string | undefined>();
+  // Initialize page directly from hash so first render is correct
+  const getInitialPageFromHash = (): { page: Page; userId?: string } => {
+    const hash = window.location.hash.slice(1);
+    if (hash) {
+      const [pageName, userId] = hash.split('/');
+      const valid: Page[] = ['shop', 'profile', 'login', 'orders', 'admin', 'feedback'];
+      if (pageName && valid.includes(pageName as Page)) {
+        return { page: pageName as Page, userId: userId || undefined };
+      }
+    }
+    return { page: 'shop' };
+  };
 
-  // Hash routing - sync page state with URL hash
+  const initial = getInitialPageFromHash();
+  const [page, setPage] = useState<Page>(initial.page);
+  const [viewingUserId, setViewingUserId] = useState<string | undefined>(initial.userId);
+  // Sync URL hash → state on browser back/forward
   useEffect(() => {
     const handleHashChange = () => {
-      const hash = window.location.hash.slice(1); // Remove #
+      const hash = window.location.hash.slice(1);
       if (hash) {
         const [pageName, userId] = hash.split('/');
-        if (pageName && ['shop', 'profile', 'login', 'orders', 'admin', 'feedback'].includes(pageName)) {
+        const valid: Page[] = ['shop', 'profile', 'login', 'orders', 'admin', 'feedback'];
+        if (pageName && valid.includes(pageName as Page)) {
           setPage(pageName as Page);
-          if (userId) {
-            setViewingUserId(userId);
-          }
+          setViewingUserId(userId || undefined);
         }
       } else {
         setPage('shop');
         setViewingUserId(undefined);
       }
     };
-
-    // Set initial page from hash
-    handleHashChange();
-
-    // Listen for hash changes
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
-  // Update hash when page changes
+  // Sync state → URL hash
   useEffect(() => {
-    const hash = viewingUserId ? `#${page}/${viewingUserId}` : `#${page}`;
-    window.location.hash = hash.slice(1); // Remove # for cleaner URL
+    const newHash = viewingUserId ? `${page}/${viewingUserId}` : page;
+    if (window.location.hash.slice(1) !== newHash) {
+      window.location.hash = newHash;
+    }
   }, [page, viewingUserId]);
 
   useEffect(() => {

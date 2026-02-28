@@ -69,6 +69,28 @@ export default function TradesPage({ onBack, onNavigate, currentPage }: TradesPa
   const [reportOpen, setReportOpen] = useState<string | null>(null);
   const [reportInputs, setReportInputs] = useState<Record<string, string>>({});
 
+  // Mobile nav filter state (mirrors TradesSidebar)
+  const [mobVillagerFilter, setMobVillagerFilter] = useState('');
+  const [mobAwaitingOnly, setMobAwaitingOnly] = useState(false);
+  const [mobStatusFilter, setMobStatusFilter] = useState('all');
+
+  const applyMobFilters = (vf = mobVillagerFilter, aw = mobAwaitingOnly, sf = mobStatusFilter) => {
+    const list = tab === 'incoming' ? incoming : tab === 'my' ? myRequests : tab === 'ongoing' ? ongoingTrades : historyTrades;
+    let filtered = [...list];
+    if (vf) filtered = filtered.filter(t => t.villager_name.toLowerCase().includes(vf.toLowerCase()));
+    if (aw && tab === 'ongoing') {
+      filtered = filtered.filter(t => {
+        if (!user) return false;
+        const step = t.trade_step ?? 1;
+        if (t.acceptor_id === user.id && (step === 1 || step === 3)) return true;
+        if (t.requester_id === user.id && step === 2) return true;
+        return false;
+      });
+    }
+    if (sf !== 'all') filtered = filtered.filter(t => t.status === sf);
+    setFilteredList(filtered.length === list.length ? null : filtered);
+  };
+
   // Amiibo verification modal state
   const [showAmiiboModal, setShowAmiiboModal] = useState(false);
   const [amiiboModalVillager, setAmiiboModalVillager] = useState('');
@@ -849,10 +871,57 @@ export default function TradesPage({ onBack, onNavigate, currentPage }: TradesPa
 
   const currentRaw = tab === 'incoming' ? incoming : tab === 'my' ? myRequests : tab === 'ongoing' ? ongoingTrades : historyTrades;
   const displayList = filteredList ?? currentRaw;
+  const mobUniqueVillagers = Array.from(new Set(currentRaw.map((t: any) => t.villager_name))).sort() as string[];
+  const mobActiveFilters = [mobVillagerFilter ? 1 : 0, mobAwaitingOnly ? 1 : 0, mobStatusFilter !== 'all' ? 1 : 0].reduce((a,b)=>a+b,0);
+
+  const tradesExtraFilters = (
+    <>
+      <div className="mobnav-filter-section">
+        <div className="mobnav-filter-label" style={{display:'flex',justifyContent:'space-between'}}>
+          <span>Filters</span>
+          {mobActiveFilters > 0 && <button style={{background:'none',border:'none',color:'rgba(255,255,255,0.5)',fontSize:'11px',cursor:'pointer'}} onClick={()=>{setMobVillagerFilter('');setMobAwaitingOnly(false);setMobStatusFilter('all');setFilteredList(null);}}>Clear ({mobActiveFilters})</button>}
+        </div>
+      </div>
+
+      {tab === 'ongoing' && (
+        <div className="mobnav-filter-section">
+          <div className="mobnav-filter-label">Quick</div>
+          <div className="mobnav-filter-chips">
+            <button className={`mobnav-filter-chip ${mobAwaitingOnly ? 'active' : ''}`} onClick={()=>{const n=!mobAwaitingOnly;setMobAwaitingOnly(n);applyMobFilters(mobVillagerFilter,n,mobStatusFilter);}}>⏳ Awaiting my action</button>
+          </div>
+        </div>
+      )}
+
+      {tab === 'history' && (
+        <div className="mobnav-filter-section">
+          <div className="mobnav-filter-label">Status</div>
+          <div className="mobnav-filter-chips">
+            {(['all','completed','cancelled'] as const).map(s => (
+              <button key={s} className={`mobnav-filter-chip ${mobStatusFilter===s?'active':''}`} onClick={()=>{setMobStatusFilter(s);applyMobFilters(mobVillagerFilter,mobAwaitingOnly,s);}}>{s==='all'?'All':s.charAt(0).toUpperCase()+s.slice(1)}</button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="mobnav-filter-section">
+        <div className="mobnav-filter-label">Villager</div>
+        <input className="mobnav-search-input" placeholder="Search villager…" value={mobVillagerFilter} onChange={e=>{setMobVillagerFilter(e.target.value);applyMobFilters(e.target.value,mobAwaitingOnly,mobStatusFilter);}} style={{width:'100%',background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'8px',padding:'8px 10px',color:'white',fontSize:'13px',marginBottom:'8px'}} />
+        <div className="mobnav-filter-chips">
+          {mobUniqueVillagers.slice(0,12).map(v=>(
+            <button key={v} className={`mobnav-filter-chip ${mobVillagerFilter===v?'active':''}`} onClick={()=>{const nv=mobVillagerFilter===v?'':v;setMobVillagerFilter(nv);applyMobFilters(nv,mobAwaitingOnly,mobStatusFilter);}}>{v}</button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{fontSize:'11px',color:'rgba(255,255,255,0.4)',marginTop:'4px'}}>
+        {mobActiveFilters > 0 ? `${displayList.length} of ${currentRaw.length} shown` : `${currentRaw.length} total`}
+      </div>
+    </>
+  );
 
   return (
     <>
-    <MobileNav currentPage={currentPage} onNavigate={onNavigate} />
+    <MobileNav currentPage={currentPage} onNavigate={onNavigate} extraFilters={tradesExtraFilters} />
     <div className="trades-layout">
     <div className="trades-page">
       <button className="page-back-btn" onClick={onBack}>←</button>

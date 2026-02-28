@@ -25,6 +25,7 @@ interface MobileNavProps {
   setSelectedPersonalities?: (v: string[] | ((prev: string[]) => string[])) => void;
   selectedGenders?: string[];
   setSelectedGenders?: (v: string[] | ((prev: string[]) => string[])) => void;
+  extraFilters?: React.ReactNode;
 }
 
 export default function MobileNav({
@@ -36,6 +37,7 @@ export default function MobileNav({
   setSelectedPersonalities = () => {},
   selectedGenders = [],
   setSelectedGenders = () => {},
+  extraFilters,
 }: MobileNavProps) {
   const { user } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -160,6 +162,13 @@ export default function MobileNav({
               <NavItem icon="⚠" label="Admin" active={currentPage === 'admin'} onClick={() => { onNavigate('admin'); setDropdownOpen(false); }} />
             )}
           </div>
+
+          {/* Extra filters (e.g. trades) */}
+          {extraFilters && (
+            <div className="mobnav-filters">
+              {extraFilters}
+            </div>
+          )}
 
           {/* Page-specific content */}
           {pageContent.showFilters && (

@@ -852,9 +852,7 @@ export default function TradesPage({ onBack, onNavigate, currentPage }: TradesPa
 
   return (
     <>
-    <div className="mobile-nav-only">
-      <MobileNav currentPage={currentPage} onNavigate={onNavigate} />
-    </div>
+    <MobileNav currentPage={currentPage} onNavigate={onNavigate} />
     <div className="trades-layout">
     <div className="trades-page">
       <button className="page-back-btn" onClick={onBack}>←</button>

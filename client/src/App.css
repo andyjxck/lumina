@@ -7757,6 +7757,7 @@ body::before {
   flex-shrink: 0;
   width: 270px;
   height: calc(100vh - 32px);
+  margin: 16px 0 16px 16px;
   z-index: 100;
   border-radius: 20px;
   display: flex;

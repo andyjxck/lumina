@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { supabase } from './AuthContext';
 import ChatModal from './ChatModal';
+import MobileNav from './MobileNav';
 
 interface FeedbackPageProps {
   onBack: () => void;
@@ -102,7 +103,32 @@ export default function FeedbackPage({ onBack, onNavigate, currentPage }: Feedba
     );
   }
 
+  const ticketsDrawerContent = (
+    <div style={{padding:'0 4px'}}>
+      <div style={{fontSize:9,fontWeight:700,letterSpacing:'0.9px',textTransform:'uppercase',color:'rgba(255,255,255,0.4)',marginBottom:10,marginTop:4}}>Your Tickets</div>
+      {loadingTickets ? (
+        <div style={{color:'rgba(255,255,255,0.4)',fontSize:12}}>Loading…</div>
+      ) : feedbackTickets.length === 0 ? (
+        <div style={{color:'rgba(255,255,255,0.3)',fontSize:12}}>No tickets yet</div>
+      ) : feedbackTickets.map((ticket: any) => (
+        <div key={ticket.id} onClick={()=>setSelectedTicket(ticket)} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 0',borderBottom:'1px solid rgba(255,255,255,0.06)',cursor:'pointer'}}>
+          <div style={{flex:1}}>
+            <div style={{color:'rgba(255,255,255,0.85)',fontSize:13,fontWeight:600}}>{ticket.category}</div>
+            <div style={{color:'rgba(255,255,255,0.4)',fontSize:11}}>{new Date(ticket.created_at).toLocaleDateString()} · {ticket.message.substring(0,50)}…</div>
+          </div>
+          <button onClick={e=>{e.stopPropagation();setSelectedTicket(ticket);setAdminChatOpen(true);}} style={{background:'none',border:'none',color:'rgba(255,255,255,0.4)',cursor:'pointer',fontSize:16}}>💬</button>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
+    <>
+    <MobileNav
+      currentPage={currentPage as any}
+      onNavigate={onNavigate}
+      extraFilters={ticketsDrawerContent}
+    />
     <div className="feedback-layout">
       <div className="psb-sidebar">
         <div className="psb-sidebar-inner">
@@ -302,5 +328,6 @@ export default function FeedbackPage({ onBack, onNavigate, currentPage }: Feedba
         />
       )}
     </div>
+    </>
   );
 }

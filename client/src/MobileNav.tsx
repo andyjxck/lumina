@@ -201,62 +201,111 @@ export default function MobileNav({
           {/* Page-specific content */}
           {pageContent.showFilters && (
             <div className="mobnav-filters">
-              <div className="mobnav-filter-section">
-                <div className="mobnav-filter-label">Gender</div>
-                <div className="mobnav-filter-chips">
-                  <button
-                    className={`mobnav-filter-chip ${selectedGenders.includes('male') ? 'active' : ''}`}
-                    onClick={() => setSelectedGenders((prev: string[]) => 
-                      prev.includes('male') ? prev.filter((g: string) => g !== 'male') : [...prev, 'male']
-                    )}
-                  >
-                    Male
-                  </button>
-                  <button
-                    className={`mobnav-filter-chip ${selectedGenders.includes('female') ? 'active' : ''}`}
-                    onClick={() => setSelectedGenders((prev: string[]) => 
-                      prev.includes('female') ? prev.filter((g: string) => g !== 'female') : [...prev, 'female']
-                    )}
-                  >
-                    Female
-                  </button>
+              {/* Gender */}
+              <div className="sidebar-section">
+                <div className="sidebar-section-label">
+                  Gender
+                  {selectedGenders.length > 0 && (
+                    <button className="inline-clear" onClick={() => { setSelectedGenders([]); setSelectedPersonalities([]); }}>clear</button>
+                  )}
                 </div>
-              </div>
-
-              <div className="mobnav-filter-section">
-                <div className="mobnav-filter-label">Personality</div>
-                <div className="mobnav-filter-chips">
-                  {['Lazy', 'Normal', 'Peppy', 'Snooty', 'Cranky', 'Jock', 'Smug', 'Uchi'].map(personality => (
-                    <button
-                      key={personality}
-                      className={`mobnav-filter-chip ${selectedPersonalities.includes(personality) ? 'active' : ''}`}
-                      onClick={() => setSelectedPersonalities((prev: string[]) => 
-                        prev.includes(personality) ? prev.filter((p: string) => p !== personality) : [...prev, personality]
-                      )}
-                    >
-                      {personality}
-                    </button>
+                <div className="inline-filter-row">
+                  {[['male','Male'],['female','Female']].map(([val, label], i) => (
+                    <span key={val} style={{display:'flex',alignItems:'baseline'}}>
+                      {i > 0 && <span className="species-sep">|</span>}
+                      <button
+                        className={`species-chip ${selectedGenders.includes(val) ? 'active' : ''}`}
+                        onClick={() => {
+                          const next = selectedGenders.includes(val)
+                            ? selectedGenders.filter((g: string) => g !== val)
+                            : [...selectedGenders, val];
+                          setSelectedGenders(next);
+                          if (next.length === 1) {
+                            const valid = next[0] === 'female' ? FEMALE_PERSONALITIES : MALE_PERSONALITIES;
+                            setSelectedPersonalities((prev: string[]) => prev.filter((p: string) => valid.includes(p)));
+                          }
+                        }}
+                      >{label}</button>
+                    </span>
                   ))}
                 </div>
               </div>
 
-              <div className="mobnav-filter-section">
-                <div className="mobnav-filter-label">Species</div>
-                <div className="mobnav-filter-chips">
-                  {['Cat', 'Dog', 'Elephant', 'Fox', 'Frog', 'Hamster', 'Horse', 'Koala', 'Lion', 'Monkey', 'Octopus', 'Penguin', 'Rabbit', 'Rhino', 'Tiger', 'Wolf'].map(species => (
-                    <button
-                      key={species}
-                      className={`mobnav-filter-chip ${selectedSpecies.includes(species) ? 'active' : ''}`}
-                      onClick={() => setSelectedSpecies((prev: string[]) => 
-                        prev.includes(species) ? prev.filter((s: string) => s !== species) : [...prev, species]
+              {/* Personality */}
+              <div className="sidebar-section">
+                <div className="sidebar-section-label">
+                  Personality
+                  {selectedPersonalities.length > 0 && (
+                    <button className="inline-clear" onClick={() => setSelectedPersonalities([])}>clear</button>
+                  )}
+                </div>
+                {(() => {
+                  const showFemale = selectedGenders.length === 0 || selectedGenders.includes('female');
+                  const showMale = selectedGenders.length === 0 || selectedGenders.includes('male');
+                  const toggle = (p: string) => setSelectedPersonalities((prev: string[]) =>
+                    prev.includes(p) ? prev.filter((x: string) => x !== p) : [...prev, p]);
+                  return (
+                    <div style={{display:'flex',flexDirection:'column',gap:'4px'}}>
+                      {showFemale && (
+                        <div className="inline-filter-row">
+                          {FEMALE_PERSONALITIES.map((p, i) => (
+                            <span key={p} style={{display:'flex',alignItems:'baseline'}}>
+                              {i > 0 && <span className="species-sep">|</span>}
+                              <button className={`species-chip ${selectedPersonalities.includes(p) ? 'active' : ''}`} onClick={() => toggle(p)}>{p}</button>
+                            </span>
+                          ))}
+                        </div>
                       )}
-                    >
-                      {species}
-                    </button>
-                  ))}
+                      {showMale && (
+                        <div className="inline-filter-row">
+                          {MALE_PERSONALITIES.map((p, i) => (
+                            <span key={p} style={{display:'flex',alignItems:'baseline'}}>
+                              {i > 0 && <span className="species-sep">|</span>}
+                              <button className={`species-chip ${selectedPersonalities.includes(p) ? 'active' : ''}`} onClick={() => toggle(p)}>{p}</button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Species — alphabetical letter rows with pipe separators */}
+              <div className="sidebar-section">
+                <div className="sidebar-section-label">
+                  Species
+                  {selectedSpecies.length > 0 && (
+                    <button className="inline-clear" onClick={() => setSelectedSpecies([])}>clear</button>
+                  )}
+                </div>
+                <div className="species-letter-list">
+                  {(() => {
+                    const allSpecies = Object.keys(SPECIES_ICONS).sort();
+                    const groups: Record<string, string[]> = {};
+                    allSpecies.forEach(s => {
+                      const letter = s[0].toUpperCase();
+                      if (!groups[letter]) groups[letter] = [];
+                      groups[letter].push(s);
+                    });
+                    return Object.entries(groups).map(([, items]) => (
+                      <div key={items[0]} className="species-letter-row">
+                        {items.map((species, i) => (
+                          <span key={species}>
+                            {i > 0 && <span className="species-sep"> | </span>}
+                            <button
+                              className={`species-chip ${selectedSpecies.includes(species) ? 'active' : ''}`}
+                              onClick={() => setSelectedSpecies((prev: string[]) =>
+                                prev.includes(species) ? prev.filter((s: string) => s !== species) : [...prev, species])}
+                            >{species}</button>
+                          </span>
+                        ))}
+                      </div>
+                    ));
+                  })()}
                 </div>
               </div>
-              
+
               {(selectedSpecies.length > 0 || selectedPersonalities.length > 0 || selectedGenders.length > 0) && (
                 <button className="mobnav-clear-filters" onClick={() => {
                   setSelectedSpecies([]);

@@ -2846,18 +2846,61 @@ body::before {
 .pro-username-cancel:hover { border-color: #f87171; color: #f87171; }
 
 /* Bio / Island name */
+.pro-meta-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+  max-width: 260px;
+}
 .pro-meta-row {
   display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 5px;
-  cursor: pointer;
-  opacity: 0.7;
+  align-items: flex-start;
+  gap: 6px;
+  opacity: 0.85;
   transition: opacity 0.15s;
 }
 .pro-meta-row:hover { opacity: 1; }
-.pro-meta-icon { font-size: 13px; }
-.pro-meta-val { font-size: 12px; color: rgba(255,255,255,0.8); font-weight: 500; }
+.pro-meta-icon { font-size: 13px; margin-top: 2px; flex-shrink: 0; }
+.pro-meta-val { font-size: 12px; color: rgba(255,255,255,0.8); font-weight: 500; line-height: 1.4; }
+.pro-meta-dim { font-size: 11px; color: rgba(255,255,255,0.4); font-weight: 400; }
+.pro-meta-placeholder { font-size: 11px; color: rgba(255,255,255,0.3); font-style: italic; }
+.pro-meta-edit-hint { color: rgba(255,255,255,0.3); font-size: 11px; }
+.pro-meta-editable { cursor: pointer; }
+.pro-meta-editable:hover .pro-meta-edit-hint { color: rgba(255,255,255,0.6); }
+.pro-meta-edit-wrap { display: flex; align-items: flex-start; gap: 4px; flex-wrap: wrap; }
+.pro-meta-input {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 6px;
+  padding: 3px 8px;
+  color: white;
+  font-size: 12px;
+  outline: none;
+  width: 160px;
+}
+.pro-meta-textarea {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 6px;
+  padding: 4px 8px;
+  color: white;
+  font-size: 12px;
+  outline: none;
+  width: 200px;
+  resize: vertical;
+}
+.pro-meta-save, .pro-meta-cancel {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 5px;
+  color: white;
+  font-size: 11px;
+  padding: 3px 7px;
+  cursor: pointer;
+}
+.pro-meta-save:hover { background: rgba(34,197,94,0.2); border-color: #22c55e; }
+.pro-meta-cancel:hover { background: rgba(239,68,68,0.15); border-color: #f87171; }
 .pro-meta-empty { font-size: 11px; color: rgba(255,255,255,0.3); font-style: italic; }
 .pro-bio-display {
   margin-top: 7px;

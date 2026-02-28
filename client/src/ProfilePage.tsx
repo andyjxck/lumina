@@ -26,6 +26,11 @@ export default function ProfilePage({ onBack, onNavigate, currentPage, viewingUs
   const [editingUsername, setEditingUsername] = useState(false);
   const [usernameInput, setUsernameInput] = useState('');
   const [savingUsername, setSavingUsername] = useState(false);
+  const [editingBio, setEditingBio] = useState(false);
+  const [bioInput, setBioInput] = useState('');
+  const [editingIsland, setEditingIsland] = useState(false);
+  const [islandInput, setIslandInput] = useState('');
+  const [savingExtra, setSavingExtra] = useState(false);
   const [chat, setChat] = useState<{ friendshipId: string; otherUser: OtherUser } | null>(null);
   const [viewingUser, setViewingUser] = useState<OtherUser | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -37,7 +42,7 @@ export default function ProfilePage({ onBack, onNavigate, currentPage, viewingUs
       const fetchViewingUser = async () => {
         const { data } = await supabase
           .from('ac_users')
-          .select('id, user_number, username, owned, favourites, wishlist, last_seen_at')
+          .select('id, user_number, username, owned, favourites, wishlist, last_seen_at, bio, island_name, avg_rating, rating_count')
           .eq('id', viewingUserId)
           .single();
         if (data) {
@@ -61,11 +66,32 @@ export default function ProfilePage({ onBack, onNavigate, currentPage, viewingUs
     setSavingUsername(true);
     await supabase.from('ac_users').update({ username: val }).eq('id', user.id);
     const updated = { ...user, username: val };
-    // Update localStorage cache so it persists
     localStorage.setItem('ac_user', JSON.stringify(updated));
     setSavingUsername(false);
     setEditingUsername(false);
-    window.location.reload(); // simplest way to refresh AuthContext user state
+    window.location.reload();
+  };
+
+  const handleSaveBio = async () => {
+    if (!user) return;
+    setSavingExtra(true);
+    await supabase.from('ac_users').update({ bio: bioInput.trim() || null }).eq('id', user.id);
+    const updated = { ...user, bio: bioInput.trim() || null };
+    localStorage.setItem('ac_user', JSON.stringify(updated));
+    setSavingExtra(false);
+    setEditingBio(false);
+    window.location.reload();
+  };
+
+  const handleSaveIsland = async () => {
+    if (!user) return;
+    setSavingExtra(true);
+    await supabase.from('ac_users').update({ island_name: islandInput.trim() || null }).eq('id', user.id);
+    const updated = { ...user, island_name: islandInput.trim() || null };
+    localStorage.setItem('ac_user', JSON.stringify(updated));
+    setSavingExtra(false);
+    setEditingIsland(false);
+    window.location.reload();
   };
 
   const getVillagerData = (name: string) =>
@@ -176,6 +202,51 @@ export default function ProfilePage({ onBack, onNavigate, currentPage, viewingUs
               </div>
             )}
           </div>
+        </div>
+
+        {/* Bio + island info */}
+        <div className="pro-meta-col">
+          {/* Island name */}
+          <div className="pro-meta-row">
+            <span className="pro-meta-icon">🏝️</span>
+            {isOwnProfile && editingIsland ? (
+              <span className="pro-meta-edit-wrap">
+                <input className="pro-meta-input" value={islandInput} onChange={e => setIslandInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleSaveIsland(); if (e.key === 'Escape') setEditingIsland(false); }} autoFocus maxLength={32} disabled={savingExtra} />
+                <button className="pro-meta-save" onClick={handleSaveIsland} disabled={savingExtra}>{savingExtra ? '…' : '✓'}</button>
+                <button className="pro-meta-cancel" onClick={() => setEditingIsland(false)}>✕</button>
+              </span>
+            ) : (
+              <span className="pro-meta-val pro-meta-editable" onClick={() => { if (isOwnProfile) { setIslandInput((user as any)?.island_name || ''); setEditingIsland(true); } }}>
+                {(displayUser as any).island_name || (isOwnProfile ? <span className="pro-meta-placeholder">Add island name ✎</span> : <span className="pro-meta-placeholder">No island name</span>)}
+                {isOwnProfile && (displayUser as any).island_name && <span className="pro-meta-edit-hint"> ✎</span>}
+              </span>
+            )}
+          </div>
+
+          {/* Bio */}
+          <div className="pro-meta-row">
+            <span className="pro-meta-icon">📝</span>
+            {isOwnProfile && editingBio ? (
+              <span className="pro-meta-edit-wrap">
+                <textarea className="pro-meta-textarea" value={bioInput} onChange={e => setBioInput(e.target.value)} autoFocus maxLength={160} disabled={savingExtra} rows={2} />
+                <button className="pro-meta-save" onClick={handleSaveBio} disabled={savingExtra}>{savingExtra ? '…' : '✓'}</button>
+                <button className="pro-meta-cancel" onClick={() => setEditingBio(false)}>✕</button>
+              </span>
+            ) : (
+              <span className="pro-meta-val pro-meta-editable" onClick={() => { if (isOwnProfile) { setBioInput((user as any)?.bio || ''); setEditingBio(true); } }}>
+                {(displayUser as any).bio || (isOwnProfile ? <span className="pro-meta-placeholder">Add a bio ✎</span> : <span className="pro-meta-placeholder">No bio</span>)}
+                {isOwnProfile && (displayUser as any).bio && <span className="pro-meta-edit-hint"> ✎</span>}
+              </span>
+            )}
+          </div>
+
+          {/* Rating */}
+          {((displayUser as any).rating_count > 0) && (
+            <div className="pro-meta-row">
+              <span className="pro-meta-icon">⭐</span>
+              <span className="pro-meta-val">{parseFloat((displayUser as any).avg_rating).toFixed(1)} <span className="pro-meta-dim">({(displayUser as any).rating_count} ratings)</span></span>
+            </div>
+          )}
         </div>
 
         {/* Centre: favourites */}

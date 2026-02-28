@@ -56,6 +56,11 @@ export default function ProfilePage({ onBack, onNavigate, currentPage, viewingUs
   const [mLeaderTab, setMLeaderTab] = useState<'trades'|'owned'>('trades');
   const [mBusy, setMBusy] = useState<string|null>(null);
 
+  // Social actions state for viewed profile
+  const [socialBusy, setSocialBusy] = useState(false);
+  const [reportingProfile, setReportingProfile] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+
   // Fetch own profile extra fields fresh from DB (handles stale localStorage)
   useEffect(() => {
     if (!user) return;
@@ -100,6 +105,54 @@ export default function ProfilePage({ onBack, onNavigate, currentPage, viewingUs
   };
 
   useEffect(() => { if (user) { loadMFriendships(); loadMLeaderboard(); } }, [user?.id]);
+
+  const getFriendshipWith = (otherId: string) =>
+    mFriendships.find(f => f.user_a_id === otherId || f.user_b_id === otherId);
+
+  const handleAddFriend = async (otherId: string) => {
+    if (!user) return;
+    setSocialBusy(true);
+    await supabase.from('friendships').insert({ user_a_id: user.id, user_b_id: otherId, status: 'pending' });
+    await loadMFriendships();
+    setSocialBusy(false);
+  };
+
+  const handleAcceptFriend = async (friendshipId: string) => {
+    setSocialBusy(true);
+    await supabase.from('friendships').update({ status: 'accepted' }).eq('id', friendshipId);
+    await loadMFriendships();
+    setSocialBusy(false);
+  };
+
+  const handleBlock = async (otherId: string) => {
+    if (!user) return;
+    setSocialBusy(true);
+    const existing = getFriendshipWith(otherId);
+    if (existing) {
+      const isA = existing.user_a_id === user.id;
+      await supabase.from('friendships').update({ status: isA ? 'blocked_by_a' : 'blocked_by_b' }).eq('id', existing.id);
+    } else {
+      await supabase.from('friendships').insert({ user_a_id: user.id, user_b_id: otherId, status: 'blocked_by_a' });
+    }
+    await loadMFriendships();
+    setSocialBusy(false);
+  };
+
+  const handleUnblock = async (friendshipId: string) => {
+    setSocialBusy(true);
+    await supabase.from('friendships').delete().eq('id', friendshipId);
+    await loadMFriendships();
+    setSocialBusy(false);
+  };
+
+  const handleReport = async (reportedId: string) => {
+    if (!user || !reportReason.trim()) return;
+    setSocialBusy(true);
+    await supabase.from('user_reports').insert({ reported_id: reportedId, reporter_id: user.id, reason: reportReason.trim() });
+    setReportingProfile(false);
+    setReportReason('');
+    setSocialBusy(false);
+  };
 
   // Fetch viewing user data when viewingUserId changes
   useEffect(() => {
@@ -364,6 +417,44 @@ export default function ProfilePage({ onBack, onNavigate, currentPage, viewingUs
               <span className="pro-meta-val">{displayUser.avg_rating ? parseFloat(String(displayUser.avg_rating)).toFixed(1) : '—'} <span className="pro-meta-dim">({displayUser.rating_count} ratings)</span></span>
             </div>
           )}
+
+          {/* Social actions when viewing another user */}
+          {viewingUser && user && viewingUser.id !== user.id && (() => {
+            const f = getFriendshipWith(viewingUser.id);
+            const isA = f?.user_a_id === user.id;
+            const blocked = f?.status === 'blocked_by_a' || f?.status === 'blocked_by_b';
+            const isPendingOut = f?.status === 'pending' && f?.user_a_id === user.id;
+            const isPendingIn  = f?.status === 'pending' && f?.user_b_id === user.id;
+            const isAccepted   = f?.status === 'accepted';
+            return (
+              <div className="pro-other-actions">
+                {!f && !blocked && (
+                  <button className="pro-action-btn add" disabled={socialBusy} onClick={() => handleAddFriend(viewingUser.id)}>+ Add Friend</button>
+                )}
+                {isPendingOut && <span className="pro-pending-label">Friend request sent…</span>}
+                {isPendingIn && (
+                  <button className="pro-action-btn add" disabled={socialBusy} onClick={() => handleAcceptFriend(f!.id)}>✓ Accept Request</button>
+                )}
+                {isAccepted && (
+                  <button className="pro-action-btn chat" onClick={() => setChat({ friendshipId: f!.id, otherUser: viewingUser as OtherUser })}>💬 Message</button>
+                )}
+                {blocked ? (
+                  <button className="pro-action-btn unblock" disabled={socialBusy} onClick={() => f && handleUnblock(f.id)}>Unblock</button>
+                ) : (
+                  <button className="pro-action-btn block" disabled={socialBusy} onClick={() => handleBlock(viewingUser.id)}>Block</button>
+                )}
+                {reportingProfile ? (
+                  <div className="pro-report-row">
+                    <input className="pro-report-input" placeholder="Reason for report…" value={reportReason} maxLength={200} onChange={e => setReportReason(e.target.value)} />
+                    <button className="pro-action-btn report" disabled={socialBusy || !reportReason.trim()} onClick={() => handleReport(viewingUser.id)}>Send</button>
+                    <button className="pro-action-btn" onClick={() => { setReportingProfile(false); setReportReason(''); }}>✕</button>
+                  </div>
+                ) : (
+                  <button className="pro-action-btn report" onClick={() => setReportingProfile(true)}>Report</button>
+                )}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Centre: favourites */}

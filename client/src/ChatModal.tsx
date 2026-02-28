@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth, supabase } from './AuthContext';
 import { encryptMessage, decryptMessage } from './crypto';
+import { useNotifications } from './notifications';
 import type { OtherUser } from './ProfileSidebar';
 
 interface ChatModalProps {
@@ -36,11 +37,12 @@ function tAgo(dateStr: string) {
 
 export default function ChatModal({ friendshipId, otherUser, onClose }: ChatModalProps) {
   const { user } = useAuth();
+  const { addNotification } = useNotifications();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [sending, setSending] = useState(false);
   const [otherTyping, setOtherTyping] = useState(false);
   const [otherLastSeen, setOtherLastSeen] = useState<string | undefined>(otherUser.last_seen_at);
+  const [sending, setSending] = useState(false);
   const [reportOpen, setReportOpen] = useState<string | null>(null);
   const [reportReason, setReportReason] = useState('');
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -51,28 +53,31 @@ export default function ChatModal({ friendshipId, otherUser, onClose }: ChatModa
     if (!user) return;
     loadMessages();
 
-    // Realtime subscription for new messages
     const sub = supabase
-      .channel(`chat-${friendshipId}`)
+      .channel(`messages:${friendshipId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${friendshipId}` },
-        async (payload: any) => {
+        (payload: any) => {
           const msg = payload.new as Message;
-          const dec = await decryptMessage(msg.content_enc, msg.iv, user.id, otherUser.id);
-          setMessages(prev => [...prev, { ...msg, decrypted: dec }]);
-          // Mark as read if from other
-          if (msg.sender_id !== user.id) {
+          setMessages(prev => [...prev, msg]);
+          setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+          if (msg.sender_id !== user.id && !msg.read_at) {
             supabase.from('messages').update({ read_at: new Date().toISOString() }).eq('id', msg.id);
           }
           setOtherTyping(false);
         })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `conversation_id=eq.${friendshipId}` },
         (payload: any) => {
-          // Update read receipts in place
-          setMessages(prev => prev.map(m => m.id === payload.new.id ? { ...m, read_at: payload.new.read_at } : m));
+          const updated = payload.new as Message;
+          if (updated.read_at) {
+            setMessages(prev => prev.map(m => m.id === updated.id ? updated : m));
+          }
         })
       .subscribe();
 
-    // Poll other user's last_seen to detect typing and live online status
+    const heartbeat = setInterval(() => {
+      supabase.from('ac_users').update({ last_seen_at: new Date().toISOString() }).eq('id', user.id);
+    }, 2 * 60 * 1000);
+
     const typingPoll = setInterval(async () => {
       const { data } = await supabase
         .from('ac_users')
@@ -82,14 +87,16 @@ export default function ChatModal({ friendshipId, otherUser, onClose }: ChatModa
       if (data) {
         setOtherLastSeen(data.last_seen_at);
         const lastSeen = new Date(data.last_seen_at).getTime();
-        const isTypingNow = Date.now() - lastSeen < 8000;
+        const timeSinceLastSeen = Date.now() - lastSeen;
+        const isTypingNow = timeSinceLastSeen < 3000;
         setOtherTyping(isTypingNow && isOnline(data.last_seen_at));
       }
-    }, 3000);
+    }, 2000);
 
     return () => {
       supabase.removeChannel(sub);
       clearInterval(typingPoll);
+      clearInterval(heartbeat);
     };
   }, [friendshipId, user]);
 
@@ -124,10 +131,13 @@ export default function ChatModal({ friendshipId, otherUser, onClose }: ChatModa
 
   const handleTyping = () => {
     if (!user) return;
-    // Update last_seen_at as a typing indicator proxy
-    supabase.from('ac_users').update({ last_seen_at: new Date().toISOString() }).eq('id', user.id);
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    typingTimeoutRef.current = setTimeout(() => {}, 3000);
+    // Update last_seen_at as a typing indicator proxy (but throttle to avoid spam)
+    if (!typingTimeoutRef.current) {
+      supabase.from('ac_users').update({ last_seen_at: new Date().toISOString() }).eq('id', user.id);
+      typingTimeoutRef.current = setTimeout(() => {
+        typingTimeoutRef.current = null;
+      }, 1000); // Only update once per second while typing
+    }
   };
 
   const handleSend = async () => {

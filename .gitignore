@@ -8,3 +8,6 @@ client/build/
 *.log
 .DS_Store
 windsurf_deployment.yaml
+
+# Local Netlify folder
+.netlify

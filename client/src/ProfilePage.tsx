@@ -1,21 +1,23 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth, supabase } from './AuthContext';
 import { VILLAGERS_DATA, SPECIES_ICONS, PERSONALITY_ICONS, getDefaultVillagerData } from './villagerData.js';
 import ProfileSidebar from './ProfileSidebar';
 import ChatModal from './ChatModal';
+import MobileNav from './MobileNav';
 import type { OtherUser } from './ProfileSidebar';
 
-type Page = 'shop' | 'profile' | 'login' | 'orders' | 'admin';
+type Page = 'shop' | 'profile' | 'login' | 'orders' | 'admin' | 'feedback';
 
 interface ProfilePageProps {
   onBack: () => void;
-  onNavigate: (page: Page) => void;
+  onNavigate: (page: Page, userId?: string) => void;
   currentPage: Page;
+  viewingUserId?: string;
 }
 
 const AVATAR_EMOJIS = ['🐱','🐶','🐸','🐻','🐼','🐨','🦊','🐯','🦁','🐺','🦝','🐮','🐷','🐔','🐧','🦆','🦅','🦉','🦋','🐢','🌿','🍃','🌸','⭐','🌙'];
 
-export default function ProfilePage({ onBack, onNavigate, currentPage }: ProfilePageProps) {
+export default function ProfilePage({ onBack, onNavigate, currentPage, viewingUserId }: ProfilePageProps) {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'owned'|'wishlist'>('owned');
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
@@ -25,12 +27,35 @@ export default function ProfilePage({ onBack, onNavigate, currentPage }: Profile
   const [usernameInput, setUsernameInput] = useState('');
   const [savingUsername, setSavingUsername] = useState(false);
   const [chat, setChat] = useState<{ friendshipId: string; otherUser: OtherUser } | null>(null);
+  const [viewingUser, setViewingUser] = useState<OtherUser | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const usernameInputRef = useRef<HTMLInputElement>(null);
 
-  if (!user) return null;
+  // Fetch viewing user data when viewingUserId changes
+  useEffect(() => {
+    if (viewingUserId && viewingUserId !== user?.id) {
+      const fetchViewingUser = async () => {
+        const { data } = await supabase
+          .from('ac_users')
+          .select('id, user_number, username, owned, favourites, wishlist, last_seen_at')
+          .eq('id', viewingUserId)
+          .single();
+        if (data) {
+          setViewingUser(data);
+        }
+      };
+      fetchViewingUser();
+    } else {
+      setViewingUser(null);
+    }
+  }, [viewingUserId, user?.id]);
+
+  // Display viewing user or current user
+  const displayUser = viewingUser || user;
+  if (!displayUser) return null;
 
   const handleSaveUsername = async () => {
+    if (!user) return;
     const val = usernameInput.trim();
     if (!val || val === user.username) { setEditingUsername(false); return; }
     setSavingUsername(true);
@@ -67,24 +92,42 @@ export default function ProfilePage({ onBack, onNavigate, currentPage }: Profile
   };
 
   const isImageUrl = avatar.startsWith('data:') || avatar.startsWith('http');
+  const isOwnProfile = !viewingUser || viewingUserId === user?.id;
 
-  const listMap = { owned: user.owned, wishlist: user.wishlist };
+  const listMap = { owned: displayUser.owned || [], wishlist: displayUser.wishlist || [] };
   const currentList = listMap[activeTab];
 
   const emptyMsg: Record<string, string> = {
-    owned: 'Tick ✓ on any villager card to mark them as owned',
-    wishlist: 'Banner 🏴 a villager to add to your dreamies list',
+    owned: isOwnProfile ? 'Tick ✓ on any villager card to mark them as owned' : 'No owned villagers',
+    wishlist: isOwnProfile ? 'Star ⭐ a villager to add to your dreamies list' : 'No dreamies',
   };
 
   const tabConfig = [
     { id: 'owned' as const,    icon: '✓', label: 'Owned',    accent: '#22c55e' },
-    { id: 'wishlist' as const, icon: '🏴', label: 'Dreamies', accent: '#fbbf24' },
+    { id: 'wishlist' as const, icon: '⭐', label: 'Dreamies', accent: '#fbbf24' },
   ];
 
-  const recentFavourites = user.favourites.slice(-5).reverse();
+  const recentFavourites = displayUser.favourites?.slice(-5).reverse() || [];
 
   return (
     <>
+    <MobileNav
+      currentPage={currentPage}
+      onNavigate={onNavigate}
+      searchTerm=""
+      onSearchChange={() => {}}
+      searchResults={[]}
+      basket={[]}
+      onToggleBasket={() => {}}
+      selectedSpecies={[]}
+      setSelectedSpecies={() => {}}
+      selectedPersonalities={[]}
+      setSelectedPersonalities={() => {}}
+      selectedGenders={[]}
+      setSelectedGenders={() => {}}
+      openFilter={null}
+      setOpenFilter={() => {}}
+    />
     <div className="profile-layout">
     <div className="profile-page">
       <button className="page-back-btn" onClick={onBack}>←</button>
@@ -102,7 +145,7 @@ export default function ProfilePage({ onBack, onNavigate, currentPage }: Profile
                   : <span className="pro-avatar-emoji">{avatar}</span>
               ) : (
                 <span className="pro-avatar-initials">
-                  {user.username ? user.username[0].toUpperCase() : '#'}
+                  {user?.username ? user.username[0].toUpperCase() : '#'}
                 </span>
               )}
             </div>
@@ -127,15 +170,18 @@ export default function ProfilePage({ onBack, onNavigate, currentPage }: Profile
                 <button className="pro-username-cancel" onClick={() => setEditingUsername(false)}>✕</button>
               </div>
             ) : (
-              <h1
-                className="pro-name pro-name-editable"
-                onClick={() => { setUsernameInput(user.username || ''); setEditingUsername(true); }}
-                title="Click to edit username"
-              >
-                {user.username || 'Islander'} <span className="pro-name-edit-hint">✎</span>
+              <h1 className={`pro-name ${isOwnProfile ? 'pro-name-editable' : ''}`} 
+                  title={isOwnProfile ? 'Click to edit username' : viewingUser ? 'Viewing ' + (viewingUser.username || '#' + viewingUser.user_number) : ''}>
+                {displayUser.username || 'Islander'} 
+                {isOwnProfile && <span className="pro-name-edit-hint">✎</span>}
               </h1>
             )}
-            <div className="pro-id-chip">#{user.user_number}</div>
+            <div className="pro-id-chip">#{displayUser.user_number}</div>
+            {viewingUser && (
+              <div className="pro-viewing-indicator">
+                Viewing profile • Back to <button onClick={() => onNavigate('profile')} className="pro-back-link">your profile</button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -146,17 +192,17 @@ export default function ProfilePage({ onBack, onNavigate, currentPage }: Profile
             <span className="pro-favs-hint">Your 5 most recently hearted villagers</span>
           </div>
           <div className="pro-favs-row">
-          {recentFavourites.length > 0 ? recentFavourites.map(name => {
-            const d = getVillagerData(name);
-            return (
-              <div key={name} className="pro-fav-stat" title={name}>
-                <div className={`pro-fav-stat-icon ${d.gender === 'female' ? 'gender-female' : 'gender-male'}`}>
-                  <span className="villager-icon-emoji">{getIcon(SPECIES_ICONS, d.species) || '🏘️'}</span>
+            {recentFavourites.length > 0 ? recentFavourites.map(name => {
+              const d = getVillagerData(name);
+              return (
+                <div key={name} className="pro-fav-stat" title={name}>
+                  <div className={`pro-fav-stat-icon ${d.gender === 'female' ? 'gender-female' : 'gender-male'}`}>
+                    <span className="villager-icon-emoji">{getIcon(SPECIES_ICONS, d.species) || '🏘️'}</span>
+                  </div>
+                  <span className="pro-fav-stat-name">{name}</span>
                 </div>
-                <span className="pro-fav-stat-name">{name}</span>
-              </div>
-            );
-          }) : (
+              );
+            }) : (
             <span className="pro-favs-empty">Heart ♥ a villager to see them here</span>
           )}
           </div>

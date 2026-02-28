@@ -37,6 +37,7 @@ export default function VillagerGrid({ villagers, basket, onToggleBasket, expand
             key={villager}
             className={`villager-tile ${inBasket ? 'selected' : ''} ${isUnavailable ? 'unavailable' : ''} ${isOwned ? 'owned' : ''}`}
             onClick={() => !isUnavailable && onExpandCard(isExpanded ? null : villager)}
+            onDoubleClick={() => !isUnavailable && onToggleBasket(villager)}
           >
             {/* Glowing cart border */}
             {inBasket && <div className="cart-glow-border" />}
@@ -57,7 +58,7 @@ export default function VillagerGrid({ villagers, basket, onToggleBasket, expand
                 className={`card-top-btn wish-btn ${isWish ? 'wish-active' : ''}`}
                 onClick={e => { e.stopPropagation(); user && toggleWishlist(villager); }}
                 title="Dreamies"
-              >🏴</button>
+              >⭐</button>
               {!isUnavailable && (
                 <button
                   className={`card-top-btn cart-arrow-btn ${inBasket ? 'in-cart' : ''}`}

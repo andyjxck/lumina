@@ -32,7 +32,7 @@ interface SidebarProps {
   setSelectedGenders: (v: string[]) => void;
   openFilter: string | null;
   setOpenFilter: (v: string | null) => void;
-  onNavigate: (page: 'shop' | 'profile' | 'login' | 'orders' | 'admin') => void;
+  onNavigate: (page: 'shop' | 'profile' | 'login' | 'orders' | 'admin' | 'feedback', userId?: string) => void;
   currentPage: string;
 }
 
@@ -77,6 +77,12 @@ export default function Sidebar({
       {open && (
         <div className="sidebar-shell">
           <div className="sidebar-inner">
+          {/* Logo */}
+          <div className="sidebar-logo-header">
+            <img src="/logo192.png" alt="Dreamie Store" className="sidebar-logo-img" />
+            <button className="tutorial-trigger-btn" title="Tutorial">?</button>
+          </div>
+          
           {/* Search — no background box */}
           <div className="sidebar-search-wrap" ref={searchRef}>
             <div className="sidebar-search-bare">
@@ -226,16 +232,15 @@ export default function Sidebar({
           <div className="sidebar-nav">
             <NavItem icon="🛒" label="Marketplace" active={currentPage === 'shop'} onClick={() => onNavigate('shop')} />
             <NavItem icon="⇄" label="Trades" active={currentPage === 'orders'} onClick={() => onNavigate('orders')} />
+            <NavItem icon="💬" label="Help" active={currentPage === 'feedback'} onClick={() => onNavigate('feedback')} />
             <NavItem
               icon="👤"
               label={user ? (user.username || `#${user.user_number}`) : 'Log In'}
               active={currentPage === 'profile' || currentPage === 'login'}
               onClick={() => onNavigate(user ? 'profile' : 'login')}
             />
-            {user?.user_number === 0 && (
-              <NavItem icon="⚠" label="Admin" active={currentPage === 'admin'} onClick={() => onNavigate('admin')} />
-            )}
-          </div>
+            <NavItem icon="⚠" label="Admin" active={currentPage === 'admin'} onClick={() => onNavigate('admin')} />
+                      </div>
         </div>
       )}
     </div>

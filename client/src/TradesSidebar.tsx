@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 
-type Page = 'shop' | 'profile' | 'login' | 'orders' | 'admin';
+type Page = 'shop' | 'profile' | 'login' | 'orders' | 'admin' | 'feedback';
 
 interface TradesSidebarProps {
   tab: 'incoming' | 'my' | 'ongoing' | 'history';
@@ -91,7 +91,13 @@ export default function TradesSidebar({ tab, incoming, myRequests, ongoingTrades
   return (
     <div className="tsb-sidebar">
       <div className="tsb-sidebar-inner">
-      <div className="tsb-header">
+        {/* Logo */}
+        <div className="sidebar-logo-header">
+          <img src="/logo192.png" alt="Dreamie Store" className="sidebar-logo-img" />
+          <button className="tutorial-trigger-btn" title="Tutorial">?</button>
+        </div>
+        
+        <div className="tsb-header">
         <span className="tsb-title">Filters</span>
         {activeFilterCount > 0 && (
           <button className="tsb-reset" onClick={handleReset}>Clear ({activeFilterCount})</button>
@@ -178,16 +184,18 @@ export default function TradesSidebar({ tab, incoming, myRequests, ongoingTrades
           <span className="nav-item-icon">⇄</span>
           <span className="nav-item-label">Trades</span>
         </button>
+        <button className={`sidebar-nav-item ${currentPage === 'feedback' ? 'active' : ''}`} onClick={() => onNavigate('feedback')} title="Help">
+          <span className="nav-item-icon">💬</span>
+          <span className="nav-item-label">Help</span>
+        </button>
         <button className={`sidebar-nav-item ${currentPage === 'profile' ? 'active' : ''}`} onClick={() => onNavigate('profile')} title="Profile">
           <span className="nav-item-icon">👤</span>
           <span className="nav-item-label">{user?.username || (user ? `#${user.user_number}` : 'Profile')}</span>
         </button>
-        {user?.user_number === 0 && (
-          <button className={`sidebar-nav-item ${currentPage === 'admin' ? 'active' : ''}`} onClick={() => onNavigate('admin')} title="Admin">
+        <button className={`sidebar-nav-item ${currentPage === 'admin' ? 'active' : ''}`} onClick={() => onNavigate('admin')} title="Admin">
             <span className="nav-item-icon">⚠</span>
             <span className="nav-item-label">Admin</span>
           </button>
-        )}
       </div>
     </div>
   );

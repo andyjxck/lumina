@@ -85,6 +85,7 @@ export default function LoginPage({ onLogin, onBack }: LoginPageProps) {
       owned: [],
       favourites: [],
       wishlist: [],
+      verified_cards: [],
     };
     setNewUser(profile);
     setLoading(false);

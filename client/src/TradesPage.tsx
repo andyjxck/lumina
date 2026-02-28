@@ -3,7 +3,7 @@ import { useAuth, supabase } from './AuthContext';
 import { VILLAGERS_DATA, SPECIES_ICONS, getDefaultVillagerData } from './villagerData.js';
 import TradesSidebar from './TradesSidebar';
 
-type Page = 'shop' | 'profile' | 'login' | 'orders' | 'admin';
+type Page = 'shop' | 'profile' | 'login' | 'orders' | 'admin' | 'feedback';
 
 interface TradesPageProps {
   onBack: () => void;
@@ -68,6 +68,11 @@ export default function TradesPage({ onBack, onNavigate, currentPage }: TradesPa
   const [reportOpen, setReportOpen] = useState<string | null>(null);
   const [reportInputs, setReportInputs] = useState<Record<string, string>>({});
 
+  // Amiibo verification modal state
+  const [showAmiiboModal, setShowAmiiboModal] = useState(false);
+  const [amiiboModalVillager, setAmiiboModalVillager] = useState('');
+  const [pendingTradeCompletion, setPendingTradeCompletion] = useState<TradeRequest | null>(null);
+
   const getVillagerData = (name: string) =>
     VILLAGERS_DATA[name as keyof typeof VILLAGERS_DATA] || getDefaultVillagerData(name);
   const getIcon = (iconMap: any, key: string) => iconMap[key as keyof typeof iconMap] || '';
@@ -75,6 +80,50 @@ export default function TradesPage({ onBack, onNavigate, currentPage }: TradesPa
   useEffect(() => {
     if (!user) { setLoading(false); return; }
     loadTrades();
+
+    // Real-time subscription for trade updates
+    console.log('Setting up real-time subscription for user:', user.id);
+    const tradeSubscription = supabase
+      .channel('trade_updates')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'trade_requests'
+        }, 
+        (payload: any) => {
+          console.log('Trade update received:', payload);
+          const newRecord = payload.new as any;
+          const oldRecord = payload.old as any;
+          
+          console.log('Is this update relevant?', {
+            requester: newRecord?.requester_id,
+            acceptor: newRecord?.acceptor_id,
+            oldRequester: oldRecord?.requester_id,
+            oldAcceptor: oldRecord?.acceptor_id,
+            userId: user.id
+          });
+          
+          // Check if this update affects the current user
+          const affectsUser = 
+            newRecord?.requester_id === user.id || 
+            newRecord?.acceptor_id === user.id ||
+            oldRecord?.requester_id === user.id || 
+            oldRecord?.acceptor_id === user.id;
+            
+          if (affectsUser) {
+            console.log('Update affects current user, refreshing trades');
+            loadTrades(); // Refresh trades when any change happens
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('Subscription status:', status);
+      });
+
+    return () => {
+      tradeSubscription.unsubscribe();
+    };
   }, [user]);
 
   const loadTrades = async () => {
@@ -158,6 +207,11 @@ export default function TradesPage({ onBack, onNavigate, currentPage }: TradesPa
     if (myRes.error) console.error('loadTrades my:', myRes.error.message);
     if (historyRes.error) console.error('loadTrades history:', historyRes.error.message);
 
+    console.log('Incoming trades:', incomingRes.data);
+    console.log('My requests (outgoing):', myRes.data);
+    console.log('Ongoing trades:', ongoingMerged);
+    console.log('History trades:', historyRes.data);
+    
     setIncoming((incomingRes.data || []).map(mapU));
     setMyRequests(myRes.data || []);
     setOngoingTrades(ongoingMerged.map(mapU));
@@ -167,31 +221,143 @@ export default function TradesPage({ onBack, onNavigate, currentPage }: TradesPa
 
   const handleAccept = async (trade: TradeRequest) => {
     if (trade.requester_id === user?.id) return; // prevent self-acceptance
+    console.log('Accepting trade:', trade.id);
     setAccepting(trade.id);
-    const { error } = await supabase
+    
+    const updateData = { status: 'ongoing', acceptor_id: user?.id, trade_step: 1 };
+    console.log('Updating trade with:', updateData);
+    
+    const { data, error } = await supabase
       .from('trade_requests')
-      .update({ status: 'ongoing', acceptor_id: user?.id, trade_step: 1 })
-      .eq('id', trade.id);
-    if (error) {
-      console.error('Accept trade error:', error.message, error.details);
-    }
+      .update(updateData)
+      .eq('id', trade.id)
+      .select();
+      
+    console.log('Accept result:', { data, error });
+    
     await loadTrades();
     setAccepting(null);
     if (!error) setTab('ongoing');
   };
 
   const handleStepUpdate = async (trade: TradeRequest, patch: Record<string, any>) => {
+    console.log('Updating trade step:', trade.id, 'with patch:', patch);
     setBusy(trade.id);
-    await supabase.from('trade_requests').update(patch).eq('id', trade.id);
+    
+    const { data, error } = await supabase
+      .from('trade_requests')
+      .update(patch)
+      .eq('id', trade.id)
+      .select();
+      
+    console.log('Step update result:', { data, error });
+    
     await loadTrades();
     setBusy(null);
   };
 
   const handleComplete = async (trade: TradeRequest) => {
     setBusy(trade.id);
+    
+    // Mark trade as completed
     await supabase.from('trade_requests').update({
       status: 'completed', trade_step: 4, completed_at: new Date().toISOString(),
     }).eq('id', trade.id);
+    
+    // Handle amiibo card verification
+    const isTrader = trade.acceptor_id === user?.id || (!trade.acceptor_id && user?.owned?.includes(trade.villager_name));
+    
+    if (isTrader) {
+      // Trader: Show custom modal to ask if they have the amiibo card
+      setAmiiboModalVillager(trade.villager_name);
+      setPendingTradeCompletion(trade);
+      setShowAmiiboModal(true);
+    } else {
+      // Tradee: Automatically mark as verified since they received it through trade
+      const updatedVerified = [...(user?.verified_cards || []), trade.villager_name];
+      
+      await supabase.from('ac_users').update({
+        owned: [...(user?.owned || []), trade.villager_name],
+        verified_cards: updatedVerified
+      }).eq('id', user?.id);
+      
+      // Update local user state to reflect the change immediately
+      if (user) {
+        user.owned = [...(user?.owned || []), trade.villager_name];
+        user.verified_cards = updatedVerified;
+        localStorage.setItem('ac_user', JSON.stringify(user));
+      }
+      
+      await loadTrades();
+      setBusy(null);
+      setTab('history');
+    }
+  };
+
+  const handleAmiiboVerification = async (hasAmiibo: boolean) => {
+    if (!pendingTradeCompletion || !user) return;
+    
+    const trade = pendingTradeCompletion;
+    
+    // Determine who is the trader and who is the tradee
+    const isTrader = trade.acceptor_id === user?.id || (!trade.acceptor_id && user?.owned?.includes(trade.villager_name));
+    const otherUserId = isTrader ? trade.requester_id : trade.acceptor_id;
+    
+    if (hasAmiibo) {
+      // Trader: Mark as verified
+      const updatedOwned = [...(user?.owned || []), trade.villager_name];
+      const updatedVerified = [...(user?.verified_cards || []), trade.villager_name];
+      
+      await supabase.from('ac_users').update({
+        owned: updatedOwned,
+        verified_cards: updatedVerified
+      }).eq('id', user?.id);
+      
+      // Update local user state to reflect the change immediately
+      if (user) {
+        user.owned = updatedOwned;
+        user.verified_cards = updatedVerified;
+        localStorage.setItem('ac_user', JSON.stringify(user));
+      }
+    } else {
+      // Trader: Remove from owned if they don't have the amiibo
+      const currentOwned = user?.owned || [];
+      const updatedOwned = currentOwned.filter(villager => villager !== trade.villager_name);
+      
+      await supabase.from('ac_users').update({
+        owned: updatedOwned
+      }).eq('id', user?.id);
+      
+      // Update local user state to reflect the change immediately
+      if (user) {
+        user.owned = updatedOwned;
+        localStorage.setItem('ac_user', JSON.stringify(user));
+      }
+    }
+    
+    // Add villager to the other user's owned list (they received the villager)
+    if (otherUserId) {
+      const { data: otherUserData } = await supabase
+        .from('ac_users')
+        .select('owned')
+        .eq('id', otherUserId)
+        .single();
+      
+      if (otherUserData) {
+        const otherUserOwned = otherUserData.owned || [];
+        if (!otherUserOwned.includes(trade.villager_name)) {
+          await supabase.from('ac_users').update({
+            owned: [...otherUserOwned, trade.villager_name]
+          }).eq('id', otherUserId);
+        }
+      }
+    }
+    
+    // Clean up modal state
+    setShowAmiiboModal(false);
+    setAmiiboModalVillager('');
+    setPendingTradeCompletion(null);
+    
     await loadTrades();
     setBusy(null);
     setTab('history');
@@ -254,6 +420,11 @@ export default function TradesPage({ onBack, onNavigate, currentPage }: TradesPa
   };
 
   const TradeCard = ({ trade, isIncoming }: { trade: TradeRequest; isIncoming: boolean }) => {
+    const { user } = useAuth();
+    const [expanded, setExpanded] = useState(false);
+    const [chatMessage, setChatMessage] = useState('');
+    const [chatMessages, setChatMessages] = useState<Array<{id: string, sender_id: string, content: string, created_at: string}>>([]);
+    const [loadingMessages, setLoadingMessages] = useState(false);
     const data = getVillagerData(trade.villager_name);
     const icon = getIcon(SPECIES_ICONS, data.species) || '🏘️';
     const sm = statusMeta[trade.status] || statusMeta.open;
@@ -266,8 +437,203 @@ export default function TradesPage({ onBack, onNavigate, currentPage }: TradesPa
       return `${Math.floor(hrs / 24)}d ago`;
     })();
 
+    // Determine role and other party
+    const isTrader = isIncoming; // Incoming = you own the villager = Trader
+    const isTradee = !isIncoming; // Outgoing = you requested = Tradee
+    const otherUserId = isIncoming ? trade.requester_id : (trade.acceptor_id || null);
+    const otherUser = isIncoming 
+      ? `#${trade.requester_number}${trade.requester_username ? ' · ' + trade.requester_username : ''}`
+      : 'Waiting for owner to accept';
+
+    // Create conversation ID (use trade ID for consistency)
+    const conversationId = trade.id; // Use the trade ID as conversation ID
+
+    // Progress steps for open trades
+    const progressSteps = [
+      { step: 1, label: 'Request Sent', completed: true },
+      { step: 2, label: 'Waiting for Accept', completed: trade.status === 'ongoing' },
+      { step: 3, label: 'Trade Ready', completed: (trade.trade_step ?? 1) >= 3 },
+    ];
+
+    // Load chat messages when expanded
+    useEffect(() => {
+      if (expanded && conversationId && user) {
+        loadChatMessages();
+        
+        // Subscribe to real-time messages
+        const messageSubscription = supabase
+          .channel(`chat_${conversationId}`)
+          .on('postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'messages',
+              filter: `conversation_id=eq.${conversationId}`
+            },
+            (payload) => {
+              console.log('New message received:', payload);
+              loadChatMessages(); // Reload messages when new one arrives
+            }
+          )
+          .subscribe();
+
+        return () => {
+          messageSubscription.unsubscribe();
+        };
+      }
+    }, [expanded, conversationId, user]);
+
+    // Simple encryption/decryption (for demo - replace with proper encryption in production)
+    const encryptMessage = (text: string): { encrypted: string; iv: string } => {
+      return {
+        encrypted: btoa(text), // Simple base64 encoding for demo
+        iv: 'demo_iv'
+      };
+    };
+
+    const decryptMessage = (encrypted: string): string => {
+      try {
+        console.log('Decrypting:', encrypted);
+        
+        // Handle potential URL-safe base64
+        let base64String = encrypted;
+        // Replace URL-safe characters if present
+        base64String = base64String.replace(/-/g, '+').replace(/_/g, '/');
+        
+        // Pad with proper padding if needed
+        while (base64String.length % 4 !== 0) {
+          base64String += '=';
+        }
+        
+        const decrypted = atob(base64String);
+        console.log('Decrypted to:', decrypted);
+        return decrypted;
+      } catch (error) {
+        console.error('Decryption failed:', error);
+        return encrypted; // Return as-is if decoding fails
+      }
+    };
+
+    const loadChatMessages = async () => {
+      if (!conversationId || !user) return;
+      
+      setLoadingMessages(true);
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error loading messages:', error);
+      } else if (data) {
+        console.log('Raw messages from DB:', data);
+        setChatMessages(data.map(msg => {
+          console.log('Processing message:', msg);
+          return {
+            id: msg.id,
+            sender_id: msg.sender_id,
+            content: decryptMessage(msg.content_enc), // Decrypt the message
+            created_at: msg.created_at
+          };
+        }));
+      }
+      setLoadingMessages(false);
+    };
+
+    const sendMessage = async () => {
+      if (!chatMessage.trim() || !conversationId || !user || !otherUserId) return;
+
+      const originalMessage = chatMessage.trim();
+      const { encrypted, iv } = encryptMessage(originalMessage);
+
+      console.log('Sending message:', {
+        original: originalMessage,
+        encrypted: encrypted,
+        iv: iv
+      });
+
+      const { error, data } = await supabase.from('messages').insert({
+        conversation_id: conversationId,
+        sender_id: user.id,
+        receiver_id: otherUserId,
+        content_enc: encrypted,
+        iv: iv,
+      }).select();
+
+      if (error) {
+        console.error('Error sending message:', error);
+      } else {
+        console.log('Message stored successfully:', data);
+        setChatMessage('');
+      }
+    };
+
+    // Simple incoming trades - no expand, just accept/reject
+    if (isIncoming && trade.status === 'open') {
+      return (
+        <div className={`tr-card incoming`}>
+          {/* Left accent stripe */}
+          <div className="tr-card-stripe" style={{ background: data.gender === 'female' ? '#f000c8' : '#3c82f6' }} />
+
+          {/* Villager icon */}
+          <div className={`tr-card-icon ${data.gender === 'female' ? 'gender-female' : 'gender-male'}`}>
+            <span className="villager-icon-emoji">{icon}</span>
+          </div>
+
+          {/* Main info */}
+          <div className="tr-card-body">
+            <div className="tr-card-row1">
+              <span className="tr-card-name">{trade.villager_name}</span>
+              <span className="tr-card-status-pill" style={{ color: sm.color, background: sm.bg }}>
+                {sm.label}
+              </span>
+            </div>
+
+            {/* Other party info */}
+            <div className="tr-card-role-info">
+              <span className="tr-card-other-user">
+                From: #{trade.requester_number}{trade.requester_username ? ` · ${trade.requester_username}` : ''}
+              </span>
+            </div>
+
+            {/* Offer text */}
+            {trade.offer_text ? (
+              <blockquote className="tr-card-offer">"{trade.offer_text}"</blockquote>
+            ) : (
+              <span className="tr-card-no-offer">No offer message</span>
+            )}
+
+            <span className="tr-card-time">{timeAgo}</span>
+          </div>
+
+          {/* Accept/Reject buttons */}
+          <div className="tr-incoming-actions">
+            <button
+              className="tr-accept-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAccept(trade);
+              }}
+              disabled={accepting === trade.id}
+            >
+              {accepting === trade.id ? (
+                <span className="tr-accept-loading">…</span>
+              ) : (
+                <>
+                  <span className="tr-accept-icon">✓</span>
+                  <span>Accept</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // Full expandable cards for ongoing and outgoing trades
     return (
-      <div className={`tr-card ${isIncoming ? 'incoming' : 'outgoing'}`}>
+      <div className={`tr-card ${isIncoming ? 'incoming' : 'outgoing'} ${expanded ? 'expanded' : ''}`} onClick={() => setExpanded(!expanded)}>
         {/* Left accent stripe */}
         <div className="tr-card-stripe" style={{ background: data.gender === 'female' ? '#f000c8' : '#3c82f6' }} />
 
@@ -285,49 +651,126 @@ export default function TradesPage({ onBack, onNavigate, currentPage }: TradesPa
             </span>
           </div>
 
-          {isIncoming && (
-            <div className="tr-card-from">
-              <span className="tr-card-from-icon">👤</span>
-              <span>#{trade.requester_number}{trade.requester_username ? ` · ${trade.requester_username}` : ''}</span>
+          {/* Role and other party */}
+          <div className="tr-card-role-info">
+            <span className="tr-card-role">
+              {isTrader ? '🏡 Trader' : '🎒 Tradee'}
+            </span>
+            <span className="tr-card-other-user">
+              {otherUser}
+            </span>
+          </div>
+
+          {/* Progress bar - only for ongoing trades */}
+          {trade.status === 'ongoing' && (
+            <div className="tr-card-progress">
+              <div className="tr-progress-bar">
+                {progressSteps.map((step, index) => (
+                  <div key={step.step} className={`tr-progress-step ${step.completed ? 'completed' : ''}`}>
+                    <div className="tr-progress-dot" />
+                    <span className="tr-progress-label">{step.label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
+          {/* Offer text */}
           {trade.offer_text ? (
             <blockquote className="tr-card-offer">"{trade.offer_text}"</blockquote>
           ) : (
             <span className="tr-card-no-offer">No offer message</span>
           )}
 
-          <span className="tr-card-time">{timeAgo}</span>
+          <div className="tr-card-footer">
+            <span className="tr-card-time">{timeAgo}</span>
+            <span className="tr-card-expand-hint">{expanded ? '▼' : '▶'}</span>
+          </div>
         </div>
 
-        {/* Accept button — not shown for your own requests */}
-        {isIncoming && trade.status === 'open' && trade.requester_id !== user?.id && (
-          <button
-            className="tr-accept-btn"
-            onClick={() => handleAccept(trade)}
-            disabled={accepting === trade.id}
-          >
-            {accepting === trade.id ? (
-              <span className="tr-accept-loading">…</span>
-            ) : (
-              <>
-                <span className="tr-accept-icon">✓</span>
-                <span>Accept</span>
-              </>
-            )}
-          </button>
-        )}
+        {/* Expanded content - only for ongoing and outgoing trades */}
+        {expanded && (
+          <div className="tr-card-expanded">
+            <div className="tr-card-expanded-content">
+              <div className="tr-expanded-section">
+                <h4>Trade Details</h4>
+                <p><strong>Your Role:</strong> {isTrader ? 'You own this villager and are trading it' : 'You are requesting this villager'}</p>
+                <p><strong>Status:</strong> {sm.label}</p>
+                <p><strong>Offer:</strong> {trade.offer_text || 'No offer specified'}</p>
+                <p><strong>Requested:</strong> {timeAgo}</p>
+              </div>
+              
+              {/* Chat section - only for ongoing trades */}
+              {trade.status === 'ongoing' && (
+                <div className="tr-expanded-section">
+                  <h4>Trade Chat</h4>
+                  <div className="tr-chat-container">
+                    <div className="tr-chat-messages">
+                      {loadingMessages ? (
+                        <div className="tr-chat-loading">
+                          <p>Loading messages...</p>
+                        </div>
+                      ) : chatMessages.length === 0 ? (
+                        <div className="tr-chat-empty">
+                          <p>No messages yet. Start the conversation!</p>
+                        </div>
+                      ) : (
+                        chatMessages.map(msg => (
+                          <div key={msg.id} className={`tr-chat-message ${msg.sender_id === user?.id ? 'sent' : 'received'}`}>
+                            <span className="tr-chat-text">{msg.content}</span>
+                            <span className="tr-chat-time">{new Date(msg.created_at).toLocaleTimeString()}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    <div className="tr-chat-input-container">
+                      <input
+                        type="text"
+                        className="tr-chat-input"
+                        placeholder="Type a message..."
+                        value={chatMessage}
+                        onChange={(e) => setChatMessage(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter' && chatMessage.trim()) {
+                            sendMessage();
+                          }
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <button 
+                        className="tr-chat-send-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          sendMessage();
+                        }}
+                        disabled={!chatMessage.trim()}
+                      >
+                        Send
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-        {/* Cancel button — outgoing requests only, before step 2 */}
-        {!isIncoming && (trade.status === 'open' || (trade.status === 'ongoing' && (trade.trade_step ?? 1) < 2)) && (
-          <button
-            className="tr-cancel-req-btn"
-            onClick={() => handleDeleteRequest(trade)}
-            disabled={busy === trade.id}
-          >
-            {busy === trade.id ? '…' : '✕ Cancel'}
-          </button>
+              {/* Danger zone - cancel button far away and clearly marked */}
+              {!isIncoming && trade.status === 'open' && (
+                <div className="tr-expanded-section tr-danger-zone">
+                  <h4>Danger Zone</h4>
+                  <p className="tr-danger-warning">⚠️ This will cancel your trade request permanently</p>
+                  <button
+                    className="tr-cancel-btn-danger"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteRequest(trade);
+                    }}
+                    disabled={busy === trade.id}
+                  >
+                    {busy === trade.id ? '…' : '✕ Cancel Trade Request'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </div>
     );
@@ -446,12 +889,55 @@ export default function TradesPage({ onBack, onNavigate, currentPage }: TradesPa
       onNavigate={onNavigate}
       currentPage={currentPage}
     />
+
+    {/* Amiibo Verification Modal */}
+    {showAmiiboModal && (
+      <div className="modal-overlay">
+        <div className="modal-content amiibo-verification-modal">
+          <div className="modal-header">
+            <h3>🎴 Amiibo Card Verification</h3>
+          </div>
+          
+          <div className="modal-body">
+            <div className="amiibo-question">
+              <p>Do you have the physical amiibo card for:</p>
+              <div className="amiibo-villager-display">
+                <div className="amiibo-villager-icon">🎴</div>
+                <span className="amiibo-villager-name">{amiiboModalVillager}</span>
+              </div>
+            </div>
+            
+            <div className="amiibo-options">
+              <div className="amiibo-option">
+                <button 
+                  className="amiibo-option-btn yes"
+                  onClick={() => handleAmiiboVerification(true)}
+                >
+                  <span className="option-icon">✅</span>
+                  <span className="option-text">Yes, I have the amiibo card</span>
+                </button>
+              </div>
+              
+              <div className="amiibo-option">
+                <button 
+                  className="amiibo-option-btn no"
+                  onClick={() => handleAmiiboVerification(false)}
+                >
+                  <span className="option-icon">❌</span>
+                  <span className="option-text">No, I don't have the amiibo card</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
     </div>
   );
 }
 
 /* ---- Ongoing trade progress card (defined outside to avoid hook issues) ---- */
-function OngoingCard({ trade, user, busy, dodoInputs, setDodoInputs, handleStepUpdate, handleComplete, handleCancel, handleExpire }: any) {
+function OngoingCard({ trade, user, busy, dodoInputs, setDodoInputs, handleStepUpdate, handleComplete, handleCancel, handleExpire, setShowAmiiboModal, setAmiiboModalVillager, setPendingTradeCompletion }: any) {
   // acceptor = owner who accepted = Trader; requester = person who wants the villager = Tradee
   // Fall back to owned list if acceptor_id is null (e.g. accepted before migration)
   const isTraderByOwned = !trade.acceptor_id && user?.owned?.includes(trade.villager_name);
@@ -464,6 +950,119 @@ function OngoingCard({ trade, user, busy, dodoInputs, setDodoInputs, handleStepU
   const otherUser = isTrader
     ? (trade.requester_number ? `#${trade.requester_number}${trade.requester_username ? ' · ' + trade.requester_username : ''}` : 'Tradee')
     : (trade.acceptor_number ? `#${trade.acceptor_number}${trade.acceptor_username ? ' · ' + trade.acceptor_username : ''}` : 'Trader');
+
+  // Chat state
+  const [chatMessage, setChatMessage] = useState('');
+  const [chatMessages, setChatMessages] = useState<Array<{id: string, sender_id: string, content: string, created_at: string}>>([]);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+
+  // Create conversation ID (use trade ID for consistency between both users)
+  const otherUserId = isTrader ? trade.requester_id : trade.acceptor_id;
+  const conversationId = trade.id; // Use the trade ID as conversation ID
+
+  // Load chat messages
+  useEffect(() => {
+    if (showChat && conversationId && user) {
+      loadChatMessages();
+      
+      // Subscribe to real-time messages
+      const messageSubscription = supabase
+        .channel(`chat_${conversationId}`)
+        .on('postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: `conversation_id=eq.${conversationId}`
+          },
+          (payload: any) => {
+            console.log('New message received in ongoing trade:', payload);
+            loadChatMessages();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        messageSubscription.unsubscribe();
+      };
+    }
+  }, [showChat, conversationId, user]);
+
+  // Simple encryption/decryption (for demo - replace with proper encryption in production)
+  const encryptMessage = (text: string): { encrypted: string; iv: string } => {
+    // For now, just return the text as-is (proper encryption would use Web Crypto API)
+    return {
+      encrypted: btoa(text), // Simple base64 encoding for demo
+      iv: 'demo_iv'
+    };
+  };
+
+  const decryptMessage = (encrypted: string): string => {
+    try {
+      console.log('OngoingCard - Decrypting:', encrypted);
+      
+      // Handle potential URL-safe base64
+      let base64String = encrypted;
+      // Replace URL-safe characters if present
+      base64String = base64String.replace(/-/g, '+').replace(/_/g, '/');
+      
+      // Pad with proper padding if needed
+      while (base64String.length % 4 !== 0) {
+        base64String += '=';
+      }
+      
+      const decrypted = atob(base64String);
+      console.log('OngoingCard - Decrypted to:', decrypted);
+      return decrypted;
+    } catch (error) {
+      console.error('OngoingCard - Decryption failed:', error);
+      return encrypted; // Return as-is if decoding fails
+    }
+  };
+
+  const loadChatMessages = async () => {
+    if (!conversationId || !user) return;
+    
+    setLoadingMessages(true);
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error loading messages:', error);
+    } else if (data) {
+      setChatMessages(data.map(msg => ({
+        id: msg.id,
+        sender_id: msg.sender_id,
+        content: decryptMessage(msg.content_enc), // Decrypt the message
+        created_at: msg.created_at
+      })));
+    }
+    setLoadingMessages(false);
+  };
+
+  const sendMessage = async () => {
+    if (!chatMessage.trim() || !conversationId || !user || !otherUserId) return;
+
+    const { encrypted, iv } = encryptMessage(chatMessage.trim());
+
+    const { error } = await supabase.from('messages').insert({
+      conversation_id: conversationId,
+      sender_id: user.id,
+      receiver_id: otherUserId,
+      content_enc: encrypted,
+      iv: iv,
+    });
+
+    if (error) {
+      console.error('Error sending message:', error);
+    } else {
+      setChatMessage('');
+    }
+  };
 
   // Time tracking
   const acceptedAt = new Date(trade.updated_at || trade.created_at).getTime();
@@ -508,6 +1107,63 @@ function OngoingCard({ trade, user, busy, dodoInputs, setDodoInputs, handleStepU
           </div>
         ))}
       </div>
+
+      {/* Chat toggle */}
+      <div className="tr-ongoing-chat-toggle">
+        <button 
+          className="tr-chat-toggle-btn"
+          onClick={() => setShowChat(!showChat)}
+        >
+          💬 {showChat ? 'Hide Chat' : 'Show Chat'} {chatMessages.length > 0 && `(${chatMessages.length})`}
+        </button>
+      </div>
+
+      {/* Chat section */}
+      {showChat && (
+        <div className="tr-ongoing-chat">
+          <div className="tr-chat-container">
+            <div className="tr-chat-messages">
+              {loadingMessages ? (
+                <div className="tr-chat-loading">
+                  <p>Loading messages...</p>
+                </div>
+              ) : chatMessages.length === 0 ? (
+                <div className="tr-chat-empty">
+                  <p>No messages yet. Start the conversation!</p>
+                </div>
+              ) : (
+                chatMessages.map(msg => (
+                  <div key={msg.id} className={`tr-chat-message ${msg.sender_id === user?.id ? 'sent' : 'received'}`}>
+                    <span className="tr-chat-text">{msg.content}</span>
+                    <span className="tr-chat-time">{new Date(msg.created_at).toLocaleTimeString()}</span>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="tr-chat-input-container">
+              <input
+                type="text"
+                className="tr-chat-input"
+                placeholder="Type a message..."
+                value={chatMessage}
+                onChange={(e) => setChatMessage(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && chatMessage.trim()) {
+                    sendMessage();
+                  }
+                }}
+              />
+              <button 
+                className="tr-chat-send-btn"
+                onClick={() => sendMessage()}
+                disabled={!chatMessage.trim()}
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Step 1 — Trader boxes villager */}
       {currentStep === 1 && (
@@ -563,12 +1219,6 @@ function OngoingCard({ trade, user, busy, dodoInputs, setDodoInputs, handleStepU
                         value={dodoVal}
                         onChange={(e: any) => setDodoInputs((p: any) => ({ ...p, [trade.id]: e.target.value.toUpperCase() }))}
                       />
-                      {dodoVal.length >= 5 && (
-                        <button className="tr-step-btn proceed" disabled={busy === trade.id}
-                          onClick={() => handleStepUpdate(trade, { dodo_code: dodoVal, trade_step: 3 })}>
-                          Gates are Open 🌏
-                        </button>
-                      )}
                     </div>
                   ) : (
                     <span className="tr-step-confirmed">✓ Gates open — tradee has the Dodo code</span>
@@ -576,6 +1226,12 @@ function OngoingCard({ trade, user, busy, dodoInputs, setDodoInputs, handleStepU
                 </>
               )}
             </>
+          )}
+          {isTrader && trade.plot_available && !trade.dodo_code && dodoVal.length >= 5 && (
+            <button className="tr-step-btn proceed" disabled={busy === trade.id}
+              onClick={() => handleStepUpdate(trade, { dodo_code: dodoVal, trade_step: 3 })}>
+              Gates are Open 🌏
+            </button>
           )}
           {canExpire && (
             <button className="tr-step-btn cancel" disabled={busy === trade.id}

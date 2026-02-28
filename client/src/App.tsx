@@ -4,14 +4,17 @@ import { VILLAGERS, UNAVAILABLE_VILLAGERS } from './villagers.js';
 import { VILLAGERS_DATA, SPECIES_ICONS } from './villagerData.js';
 import { AuthProvider, useAuth } from './AuthContext';
 import { supabase } from './AuthContext';
+import { NotificationProvider } from './notifications';
 import LoginPage from './LoginPage';
 import ProfilePage from './ProfilePage';
 import Sidebar from './Sidebar';
+import MobileNav from './MobileNav';
 import VillagerGrid from './VillagerGrid';
 import TradesPage from './TradesPage';
 import AdminPage from './AdminPage';
+import FeedbackPage from './FeedbackPage';
 
-type Page = 'shop' | 'profile' | 'login' | 'orders' | 'admin';
+type Page = 'shop' | 'profile' | 'login' | 'orders' | 'admin' | 'feedback';
 
 function ShopInner() {
   const { user } = useAuth();
@@ -19,8 +22,10 @@ function ShopInner() {
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [offers, setOffers] = useState<Record<string, string>>({});
+  const [offerTypes, setOfferTypes] = useState<Record<string, 'bells' | 'nmt' | 'other' | 'no_offer'>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [plotAvailable, setPlotAvailable] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [selectedSpecies, setSelectedSpecies] = useState<string[]>([]);
@@ -30,6 +35,7 @@ function ShopInner() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [page, setPage] = useState<Page>('shop');
+  const [viewingUserId, setViewingUserId] = useState<string | undefined>();
 
   useEffect(() => {
     if (!user) setPage('shop');
@@ -68,43 +74,107 @@ function ShopInner() {
   const handleCheckout = async () => {
     if (!user) { setPage('login'); return; }
     setSubmitting(true);
+    
+    console.log('Current user data:', user);
+    console.log('User ID:', user.id);
+    console.log('User number:', user.user_number);
+
+    // Verify user exists in ac_users table
+    const { data: userCheck, error: userCheckError } = await supabase
+      .from('ac_users')
+      .select('id, user_number, username')
+      .eq('id', user.id)
+      .single();
+    
+    console.log('User verification:', { userCheck, userCheckError });
+    
+    if (userCheckError || !userCheck) {
+      console.error('User not found in ac_users table!');
+      setSubmitting(false);
+      return;
+    }
 
     // Check for existing active (open/ongoing) requests by this user for any of the basket villagers
-    const { data: existing } = await supabase
+    const { data: existing, error: existingError } = await supabase
       .from('trade_requests')
-      .select('villager_name')
+      .select('villager_name, status')
       .eq('requester_id', user.id)
       .in('status', ['open', 'ongoing'])
       .in('villager_name', basket);
 
+    console.log('Existing requests check:', { existing, existingError, basket });
+    
+    if (existingError) {
+      console.error('Error checking existing requests:', existingError);
+    }
+
     const alreadyActive = new Set((existing || []).map((r: any) => r.villager_name));
-    const newRows = basket
-      .filter(v => !alreadyActive.has(v))
-      .map(villager => ({
-        requester_id: user.id,
-        villager_name: villager,
-        offer_text: offers[villager] || '',
-        status: 'open',
-      }));
+    console.log('Already active villagers:', Array.from(alreadyActive));
+    console.log('Basket before filtering:', basket);
+    const filteredBasket = basket.filter(v => !alreadyActive.has(v));
+    console.log('Basket after filtering:', filteredBasket);
+    
+    const newRows = filteredBasket
+      .map(villager => {
+        const offerType = offerTypes[villager] || 'bells';
+        let offerText = '';
+        
+        if (offerType === 'no_offer') {
+          offerText = 'No offer - requesting for free';
+        } else if (offerType === 'bells' || offerType === 'nmt') {
+          offerText = offers[villager] || '';
+        } else {
+          offerText = offers[villager] || '';
+        }
+        
+        return {
+          requester_id: user.id,
+          villager_name: villager,
+          offer_text: offerText,
+          status: 'open',
+          trade_step: 1,
+          plot_available: plotAvailable,
+          dodo_code: '',
+        };
+      });
 
     if (newRows.length > 0) {
-      await supabase.from('trade_requests').insert(newRows);
+      console.log('Inserting trade requests:', newRows);
+      console.log('User ID:', user.id);
+      console.log('Plot available:', plotAvailable);
+      
+      const { data, error } = await supabase.from('trade_requests').insert(newRows);
+      
+      if (error) {
+        console.error('Error inserting trade requests:', error);
+        console.error('Error details:', error.details);
+        console.error('Error hint:', error.hint);
+        console.error('Error code:', error.code);
+      } else {
+        console.log('Successfully inserted trade requests:', data);
+      }
+    } else {
+      console.log('No new rows to insert - all villagers already have active requests');
     }
     setSubmitting(false);
     setSubmitted(true);
     setTimeout(() => {
       setBasket([]);
       setOffers({});
+      setOfferTypes({});
+      setPlotAvailable(false);
       setCheckoutOpen(false);
       setCartOpen(false);
       setSubmitted(false);
+      setPage('orders'); // Navigate to trades page to see the new request
     }, 2000);
   };
 
   if (page === 'login') return <LoginPage onLogin={() => setPage('shop')} onBack={() => setPage('shop')} />;
-  if (page === 'profile') return <ProfilePage onBack={() => setPage('shop')} onNavigate={setPage} currentPage={page} />;
+  if (page === 'profile') return <ProfilePage onBack={() => { setPage('shop'); setViewingUserId(undefined); }} onNavigate={(newPage, userId) => { setPage(newPage); setViewingUserId(userId); }} currentPage={page} viewingUserId={viewingUserId} />;
   if (page === 'orders') return <TradesPage onBack={() => setPage('shop')} onNavigate={setPage} currentPage={page} />;
   if (page === 'admin') return <AdminPage onBack={() => setPage('shop')} onNavigate={setPage} currentPage={page} />;
+  if (page === 'feedback') return <FeedbackPage onBack={() => setPage('shop')} onNavigate={setPage} currentPage={page} />;
 
   return (
     <div className="app-layout">
@@ -115,7 +185,7 @@ function ShopInner() {
         onSearchChange={setSearchTerm}
         showSearch={showSearch}
         onSearchFocus={() => setShowSearch(true)}
-        searchResults={searchResults}
+        searchResults={getFilteredVillagers()}
         basket={basket}
         onToggleBasket={toggleBasket}
         selectedSpecies={selectedSpecies}
@@ -126,11 +196,39 @@ function ShopInner() {
         setSelectedGenders={setSelectedGenders}
         openFilter={openFilter}
         setOpenFilter={setOpenFilter}
-        onNavigate={setPage}
+        onNavigate={(newPage, userId) => { setPage(newPage); setViewingUserId(userId); }}
         currentPage={page}
       />
 
+      <MobileNav
+        currentPage={page}
+        onNavigate={(p) => setPage(p)}
+        selectedSpecies={selectedSpecies}
+        setSelectedSpecies={setSelectedSpecies}
+        selectedPersonalities={selectedPersonalities}
+        setSelectedPersonalities={setSelectedPersonalities}
+        selectedGenders={selectedGenders}
+        setSelectedGenders={setSelectedGenders}
+      />
+
       <main className={`main-content ${sidebarOpen ? 'with-sidebar' : ''}`}>
+        {/* Mobile Search Bar - only show on mobile */}
+        <div className="mobile-search-bar">
+          <span className="search-icon">🔍</span>
+          <input
+            type="text"
+            placeholder="Search villagers..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="mobile-search-input"
+          />
+          {searchTerm && (
+            <button className="mobile-search-clear" onClick={() => setSearchTerm('')}>
+              ✕
+            </button>
+          )}
+        </div>
+
         <VillagerGrid
           villagers={getFilteredVillagers()}
           basket={basket}
@@ -145,7 +243,7 @@ function ShopInner() {
         <div className="checkout-overlay" onClick={() => !submitting && setCheckoutOpen(false)}>
           <div className="checkout-modal" onClick={e => e.stopPropagation()}>
             <div className="checkout-header">
-              <h2 className="checkout-title">Trade Request</h2>
+              <h2 className="checkout-title">Offer</h2>
               <button className="checkout-close" onClick={() => setCheckoutOpen(false)}>✕</button>
             </div>
             {submitted ? (
@@ -160,6 +258,7 @@ function ShopInner() {
                 <div className="checkout-items">
                   {basket.map(villager => {
                     const vData = VILLAGERS_DATA[villager as keyof typeof VILLAGERS_DATA];
+                    const offerType = offerTypes[villager] || 'bells';
                     return (
                       <div key={villager} className="checkout-item">
                         <div className={`checkout-item-icon ${vData?.gender === 'female' ? 'gender-female' : 'gender-male'}`}>
@@ -169,13 +268,54 @@ function ShopInner() {
                         </div>
                         <div className="checkout-item-info">
                           <span className="checkout-item-name">{villager}</span>
-                          <textarea
-                            className="checkout-offer-input"
-                            placeholder={`Your offer for ${villager}…`}
-                            value={offers[villager] || ''}
-                            onChange={e => setOffers(prev => ({ ...prev, [villager]: e.target.value }))}
-                            rows={2}
-                          />
+                          <div className="offer-type-buttons">
+                            <button
+                              className={`offer-type-btn ${offerType === 'bells' ? 'active' : ''}`}
+                              onClick={() => setOfferTypes(prev => ({ ...prev, [villager]: 'bells' }))}
+                            >
+                              Bells
+                            </button>
+                            <button
+                              className={`offer-type-btn ${offerType === 'nmt' ? 'active' : ''}`}
+                              onClick={() => setOfferTypes(prev => ({ ...prev, [villager]: 'nmt' }))}
+                            >
+                              NMT
+                            </button>
+                            <button
+                              className={`offer-type-btn ${offerType === 'other' ? 'active' : ''}`}
+                              onClick={() => setOfferTypes(prev => ({ ...prev, [villager]: 'other' }))}
+                            >
+                              Other
+                            </button>
+                            <button
+                              className={`offer-type-btn ${offerType === 'no_offer' ? 'active' : ''}`}
+                              onClick={() => setOfferTypes(prev => ({ ...prev, [villager]: 'no_offer' }))}
+                            >
+                              No Offer
+                            </button>
+                          </div>
+                          {offerType === 'no_offer' ? (
+                            <div className="no-offer-message">
+                              <span>No offer - requesting for free</span>
+                            </div>
+                          ) : (offerType === 'bells' || offerType === 'nmt') ? (
+                            <input
+                              type="number"
+                              className="checkout-amount-input"
+                              placeholder="Amount"
+                              value={offers[villager] || ''}
+                              onChange={e => setOffers(prev => ({ ...prev, [villager]: e.target.value }))}
+                              min="1"
+                            />
+                          ) : (
+                            <textarea
+                              className="checkout-offer-input"
+                              placeholder={`Your offer for ${villager}…`}
+                              value={offers[villager] || ''}
+                              onChange={e => setOffers(prev => ({ ...prev, [villager]: e.target.value }))}
+                              rows={2}
+                            />
+                          )}
                         </div>
                       </div>
                     );
@@ -186,10 +326,20 @@ function ShopInner() {
                     You need to <button className="link-btn" onClick={() => { setCheckoutOpen(false); setPage('login'); }}>log in</button> to send trade requests.
                   </p>
                 )}
+                <div className="checkout-checkbox">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={plotAvailable}
+                      onChange={e => setPlotAvailable(e.target.checked)}
+                    />
+                    I have or can have a plot available
+                  </label>
+                </div>
                 <button
                   className="request-btn"
                   onClick={handleCheckout}
-                  disabled={submitting || !user}
+                  disabled={submitting || !user || !plotAvailable}
                 >
                   {submitting ? 'Sending…' : `Send ${basket.length} Trade Request${basket.length !== 1 ? 's' : ''}`}
                 </button>
@@ -243,9 +393,11 @@ function ShopInner() {
 function App() {
   return (
     <AuthProvider>
-      <div className="min-h-screen app-bg">
-        <ShopInner />
-      </div>
+      <NotificationProvider>
+        <div className="min-h-screen app-bg">
+          <ShopInner />
+        </div>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

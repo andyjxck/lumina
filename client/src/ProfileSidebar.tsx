@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useAuth, supabase } from './AuthContext';
 import { VILLAGERS_DATA, SPECIES_ICONS, getDefaultVillagerData } from './villagerData.js';
 
-type Page = 'shop' | 'profile' | 'login' | 'orders' | 'admin';
+type Page = 'shop' | 'profile' | 'login' | 'orders' | 'admin' | 'feedback';
 
 interface ProfileSidebarProps {
   onOpenChat: (friendshipId: string, otherUser: OtherUser) => void;
-  onNavigate: (page: Page) => void;
+  onNavigate: (page: Page, userId?: string) => void;
   currentPage: Page;
 }
 
@@ -40,12 +40,18 @@ function isOnline(last_seen_at?: string) {
   return Date.now() - new Date(last_seen_at).getTime() < 3 * 60 * 1000;
 }
 
+const NavItem = ({ icon, label, active, onClick }: { icon: string; label: string; active?: boolean; onClick?: () => void }) => (
+  <button className={`sidebar-nav-item ${active ? 'active' : ''}`} onClick={onClick} title={label}>
+    <span className="nav-item-icon">{icon}</span>
+    <span className="nav-item-label">{label}</span>
+  </button>
+);
+
 export default function ProfileSidebar({ onOpenChat, onNavigate, currentPage }: ProfileSidebarProps) {
   const { user } = useAuth();
   const [searchQ, setSearchQ] = useState('');
   const [searchResults, setSearchResults] = useState<OtherUser[]>([]);
   const [searching, setSearching] = useState(false);
-  const [viewingUser, setViewingUser] = useState<OtherUser | null>(null);
   const [friendships, setFriendships] = useState<Friendship[]>([]);
   const [leaderTrades, setLeaderTrades] = useState<LeaderEntry[]>([]);
   const [leaderOwned, setLeaderOwned] = useState<LeaderEntry[]>([]);
@@ -269,79 +275,21 @@ export default function ProfileSidebar({ onOpenChat, onNavigate, currentPage }: 
     );
   };
 
-  const renderUserProfile = (other: OtherUser) => {
-    const getVD = (name: string) => VILLAGERS_DATA[name as keyof typeof VILLAGERS_DATA] || getDefaultVillagerData(name);
-    const getIcon = (species: string) => SPECIES_ICONS[species as keyof typeof SPECIES_ICONS] || '🏘️';
-    const online = isOnline(other.last_seen_at);
-
-    return (
-      <div className="psb-user-profile">
-        <div className="psb-user-profile-header">
-          <button className="psb-back-btn" onClick={() => setViewingUser(null)}>← Back</button>
-          <div className="psb-profile-identity">
-            <div className={`psb-online-dot ${online ? 'online' : 'offline'}`} />
-            <span className="psb-profile-name">{other.username || `#${other.user_number}`}</span>
-            <span className="psb-profile-num">#{other.user_number}</span>
-          </div>
-          {renderUserActions(other)}
-        </div>
-        <div className="psb-profile-section">
-          <div className="psb-profile-section-title">Owned ({other.owned.length})</div>
-          <div className="psb-profile-grid">
-            {other.owned.map(name => {
-              const d = getVD(name);
-              return (
-                <div key={name} className={`psb-profile-card ${d.gender === 'female' ? 'f' : 'm'}`} title={name}>
-                  <div className={`psb-card-icon ${d.gender === 'female' ? 'gender-female' : 'gender-male'}`}>
-                    <span className="villager-icon-emoji">{getIcon(d.species)}</span>
-                  </div>
-                  <span className="psb-card-name">{name}</span>
-                </div>
-              );
-            })}
-            {!other.owned.length && <span className="psb-empty-note">No owned villagers</span>}
-          </div>
-        </div>
-        <div className="psb-profile-section">
-          <div className="psb-profile-section-title">Dreamies ({other.wishlist.length})</div>
-          <div className="psb-profile-grid">
-            {other.wishlist.map(name => {
-              const d = getVD(name);
-              return (
-                <div key={name} className={`psb-profile-card ${d.gender === 'female' ? 'f' : 'm'}`} title={name}>
-                  <div className={`psb-card-icon ${d.gender === 'female' ? 'gender-female' : 'gender-male'}`}>
-                    <span className="villager-icon-emoji">{getIcon(d.species)}</span>
-                  </div>
-                  <span className="psb-card-name">{name}</span>
-                </div>
-              );
-            })}
-            {!other.wishlist.length && <span className="psb-empty-note">No dreamies</span>}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
+  
   if (!user) return null;
-
-  const NavItem = ({ icon, label, active, onClick }: { icon: string; label: string; active?: boolean; onClick?: () => void }) => (
-    <button className={`sidebar-nav-item ${active ? 'active' : ''}`} onClick={onClick} title={label}>
-      <span className="nav-item-icon">{icon}</span>
-      <span className="nav-item-label">{label}</span>
-    </button>
-  );
 
   return (
     <div className="psb-sidebar">
       {/* Scrollable content */}
       <div className="psb-sidebar-inner">
 
-        {viewingUser ? (
-          /* ── USER PROFILE VIEW ── */
-          renderUserProfile(viewingUser)
-        ) : (
-          <>
+        <>
+            {/* Logo */}
+            <div className="sidebar-logo-header">
+              <img src="/logo192.png" alt="Dreamie Store" className="sidebar-logo-img" />
+              <button className="tutorial-trigger-btn" title="Tutorial">?</button>
+            </div>
+            
             {/* ── SEARCH BAR (always at top, like shop) ── */}
             <div className="sidebar-search-wrap">
               <div className="sidebar-search-bare">
@@ -364,11 +312,11 @@ export default function ProfileSidebar({ onOpenChat, onNavigate, currentPage }: 
               <div className="psb-section">
                 {searching && <div className="psb-loading">Searching…</div>}
                 {!searching && searchResults.map(u => (
-                  <div key={u.id} className="psb-result-row" onClick={() => setViewingUser(u)}>
+                  <div key={u.id} className="psb-result-row" onClick={() => onNavigate('profile', u.id)}>
                     <div className={`psb-online-dot ${isOnline(u.last_seen_at) ? 'online' : 'offline'}`} />
                     <div className="psb-result-info">
                       <span className="psb-result-name">{u.username || `#${u.user_number}`}</span>
-                      <span className="psb-result-meta">#{u.user_number} · {u.owned.length} owned</span>
+                      <span className="psb-result-meta">#{u.user_number} · {u.owned?.length || 0} owned</span>
                     </div>
                     <span className="psb-result-arrow">›</span>
                   </div>
@@ -378,6 +326,14 @@ export default function ProfileSidebar({ onOpenChat, onNavigate, currentPage }: 
                 )}
               </div>
             )}
+
+            {/* ── UNREAD CHATS ── */}
+            <div className="sidebar-section">
+              <div className="sidebar-section-label">
+                Unread Chats
+              </div>
+              <div className="psb-no-results">No unread messages</div>
+            </div>
 
             {/* ── FRIENDS ── */}
             <div className="sidebar-section">
@@ -390,7 +346,7 @@ export default function ProfileSidebar({ onOpenChat, onNavigate, currentPage }: 
 
               {pendingIncoming.map(f => f.other && (
                 <div key={f.id} className="psb-friend-row">
-                  <div className="psb-result-info" onClick={() => f.other && setViewingUser(f.other)} style={{cursor:'pointer'}}>
+                  <div className="psb-result-info" onClick={() => f.other && onNavigate('profile', f.other.id)} style={{cursor:'pointer'}}>
                     <span className="psb-result-name">{f.other.username || `#${f.other.user_number}`}</span>
                     <span className="psb-result-meta">#{f.other.user_number} · wants to be friends</span>
                   </div>
@@ -400,11 +356,11 @@ export default function ProfileSidebar({ onOpenChat, onNavigate, currentPage }: 
               ))}
 
               {acceptedFriends.map(f => f.other && (
-                <div key={f.id} className="psb-friend-row" onClick={() => f.other && setViewingUser(f.other)}>
+                <div key={f.id} className="psb-friend-row" onClick={() => f.other && onNavigate('profile', f.other.id)}>
                   <div className={`psb-online-dot ${isOnline(f.other.last_seen_at) ? 'online' : 'offline'}`} />
                   <div className="psb-result-info">
                     <span className="psb-result-name">{f.other.username || `#${f.other.user_number}`}</span>
-                    <span className="psb-result-meta">#{f.other.user_number} · {f.other.owned.length} owned</span>
+                    <span className="psb-result-meta">#{f.other.user_number} · {f.other.owned?.length || 0} owned</span>
                   </div>
                   <button className="psb-action-btn chat" onClick={e => { e.stopPropagation(); f.other && onOpenChat(f.id, f.other); }}>💬</button>
                 </div>
@@ -462,22 +418,21 @@ export default function ProfileSidebar({ onOpenChat, onNavigate, currentPage }: 
               </div>
             </div>
           </>
-        )}
+        )
       </div>
 
       {/* ── NAV (pinned at bottom, never scrolls) ── */}
       <div className="sidebar-nav">
         <NavItem icon="🛒" label="Marketplace" active={currentPage === 'shop'} onClick={() => onNavigate('shop')} />
         <NavItem icon="⇄" label="Trades" active={currentPage === 'orders'} onClick={() => onNavigate('orders')} />
+        <NavItem icon="💬" label="Help" active={currentPage === 'feedback'} onClick={() => onNavigate('feedback')} />
         <NavItem
           icon="👤"
           label={user.username || `#${user.user_number}`}
           active={currentPage === 'profile'}
           onClick={() => onNavigate('profile')}
         />
-        {user.user_number === 0 && (
-          <NavItem icon="⚠" label="Admin" active={currentPage === 'admin'} onClick={() => onNavigate('admin')} />
-        )}
+        <NavItem icon="⚠" label="Admin" active={currentPage === 'admin'} onClick={() => onNavigate('admin')} />
       </div>
     </div>
   );

@@ -13,6 +13,7 @@ export interface UserProfile {
   owned: string[];
   favourites: string[];
   wishlist: string[];
+  verified_cards: string[];
 }
 
 interface AuthContextType {
@@ -35,10 +36,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const stored = localStorage.getItem('ac_user');
     if (stored) {
-      try { setUser(JSON.parse(stored)); } catch {}
+      try { 
+        const parsed = JSON.parse(stored);
+        // Ensure verified_cards exists for older stored profiles
+        if (parsed && !parsed.verified_cards) {
+          parsed.verified_cards = [];
+        }
+        setUser(parsed); 
+      } catch {}
     }
     setLoading(false);
   }, []);
+
+  // Global heartbeat to update online status
+  useEffect(() => {
+    if (!user) return;
+
+    // Update immediately when user comes online
+    supabase.from('ac_users').update({ last_seen_at: new Date().toISOString() }).eq('id', user.id);
+
+    // Then update every 2 minutes to stay online
+    const heartbeat = setInterval(() => {
+      supabase.from('ac_users').update({ last_seen_at: new Date().toISOString() }).eq('id', user.id);
+    }, 2 * 60 * 1000);
+
+    return () => clearInterval(heartbeat);
+  }, [user]);
 
   const login = async (identifier: string, secret: string): Promise<string | null> => {
     const { data, error } = await supabase
@@ -59,6 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       owned: data.owned || [],
       favourites: data.favourites || [],
       wishlist: data.wishlist || [],
+      verified_cards: data.verified_cards || [],
     };
     setUser(profile);
     localStorage.setItem('ac_user', JSON.stringify(profile));
